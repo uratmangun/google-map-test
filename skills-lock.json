@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "skills": {
+    "agent-browser": {
+      "source": "vercel-labs/agent-browser",
+      "sourceType": "github",
+      "skillPath": "skills/agent-browser/SKILL.md",
+      "computedHash": "c19a532a3777698b80b35270939a1dc559da451381971b3e1e78174d1ab54863"
+    },
+    "cloudflare": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "skillPath": "skills/cloudflare/SKILL.md",
+      "computedHash": "ecc9c0211c605451f7e8b437724f84810fe013d5ca6c653c51d046139d4ecbf7"
+    },
+    "gh-cli": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/gh-cli/SKILL.md",
+      "computedHash": "cbe644b0c6760ae2a1eaafa39133920d889331327065d92a131675a665273e56"
+    },
+    "hono": {
+      "source": "yusukebe/hono-skill",
+      "sourceType": "github",
+      "skillPath": "skills/hono/SKILL.md",
+      "computedHash": "220e5e1b12bbaeec49ec362b6e2262d77632d0536e9758bba9acbbc323fef990"
+    },
+    "mcporter": {
+      "source": "steipete/clawdis",
+      "sourceType": "github",
+      "skillPath": "skills/mcporter/SKILL.md",
+      "computedHash": "32822a4e496c5a2727a6e016ed3d79155f0775ded263de0c299faebcbba44215"
+    },
+    "react-devtools": {
+      "source": "callstackincubator/agent-react-devtools",
+      "sourceType": "github",
+      "skillPath": "packages/agent-react-devtools/skills/react-devtools/SKILL.md",
+      "computedHash": "f914845954227725e3a2e8504e10779e79c1adde046b43c9046bf49e7ef262d1"
+    },
+    "skill-creator": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/skill-creator/SKILL.md",
+      "computedHash": "5ea13a6d9f0d4bb694405d79acd00cadec0d21bb138c4dd10fcf3c500cb835c2"
+    },
+    "webauthx": {
+      "source": "wevm/webauthx",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "3b1eead0694dd14a8434f41ad471d50331a6323bc9f5ecfd7461ed5574a90d91"
+    }
+  }
+}
