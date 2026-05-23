@@ -25,6 +25,12 @@
       "skillPath": "skills/cloudflare/SKILL.md",
       "computedHash": "ecc9c0211c605451f7e8b437724f84810fe013d5ca6c653c51d046139d4ecbf7"
     },
+    "create-tool": {
+      "source": "xmcp-dev/skills",
+      "sourceType": "github",
+      "skillPath": "skills/tool-design/SKILL.md",
+      "computedHash": "7370389e96edea1963ba3233a8485e4a59cd8277df23d95faa50ecf26d83455a"
+    },
     "gh-cli": {
       "source": "github/awesome-copilot",
       "sourceType": "github",
@@ -36,6 +42,12 @@
       "sourceType": "github",
       "skillPath": "skills/hono/SKILL.md",
       "computedHash": "220e5e1b12bbaeec49ec362b6e2262d77632d0536e9758bba9acbbc323fef990"
+    },
+    "mcp-inspector": {
+      "source": "mcpjam/inspector",
+      "sourceType": "github",
+      "skillPath": "skills/mcp-inspector/SKILL.md",
+      "computedHash": "9e2b34eda0a83018f6745788d79e6988c8289d5d15d0a2710161390730dd6a65"
     },
     "mcp-server-design": {
       "source": "xmcp-dev/skills",
@@ -49,11 +61,23 @@
       "skillPath": "skills/mcporter/SKILL.md",
       "computedHash": "32822a4e496c5a2727a6e016ed3d79155f0775ded263de0c299faebcbba44215"
     },
+    "prompt-design": {
+      "source": "xmcp-dev/skills",
+      "sourceType": "github",
+      "skillPath": "skills/prompt-design/SKILL.md",
+      "computedHash": "a1466a55dd92868dc9796af877a32f0baaa112e80f14d5b12ef00c945b43326f"
+    },
     "react-devtools": {
       "source": "callstackincubator/agent-react-devtools",
       "sourceType": "github",
       "skillPath": "packages/agent-react-devtools/skills/react-devtools/SKILL.md",
       "computedHash": "f914845954227725e3a2e8504e10779e79c1adde046b43c9046bf49e7ef262d1"
+    },
+    "resource-design": {
+      "source": "xmcp-dev/skills",
+      "sourceType": "github",
+      "skillPath": "skills/resource-design/SKILL.md",
+      "computedHash": "dbace9992c0519227f3a7a21d290ff0cde27562c5d5efb0f1a655bf1306ba21b"
     },
     "skill-creator": {
       "source": "anthropics/skills",
@@ -66,6 +90,12 @@
       "sourceType": "github",
       "skillPath": "SKILL.md",
       "computedHash": "3b1eead0694dd14a8434f41ad471d50331a6323bc9f5ecfd7461ed5574a90d91"
+    },
+    "widget-design": {
+      "source": "xmcp-dev/skills",
+      "sourceType": "github",
+      "skillPath": "skills/widget-design/SKILL.md",
+      "computedHash": "8ca1f09cf1f402b45347d0d55b10deb33215c932b18bb98a99fbf62d39e9ac4b"
     }
   }
 }

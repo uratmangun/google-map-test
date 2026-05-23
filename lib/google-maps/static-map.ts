@@ -14,7 +14,7 @@ export type StaticMapCoordinates = {
   maptype?: StaticMapMapType;
 };
 
-function getApiKey(): string {
+export function getGoogleMapsApiKey(): string {
   const key =
     process.env.GOOGLE_MAPS_API_KEY?.trim() ||
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim();
@@ -53,7 +53,7 @@ export function buildStaticMapUrl(
 export async function fetchStaticMapImage(coords: StaticMapCoordinates) {
   await assertMcpQuotaAvailable("show-map-at-coordinates");
 
-  const apiKey = getApiKey();
+  const apiKey = getGoogleMapsApiKey();
   const zoom = coords.zoom ?? 15;
   const width = coords.width ?? 640;
   const height = coords.height ?? 400;

@@ -101,14 +101,15 @@ Usage counts are loaded on demand per API card (Refresh). The server needs ADC +
 
 `GCP_PROJECT_ID` must be the same project as `GOOGLE_MAPS_API_KEY`. The Places card reads **`places.googleapis.com`** (Places API New), not legacy `places-backend.googleapis.com`.
 
-**MCP `show-map-at-coordinates`** uses **Static Maps** (`static-maps-backend.googleapis.com`). If you get *API key is not authorized to use this service*, enable Static Maps on the project and add it to the key’s **API restrictions** (same key as Places is fine):
+**MCP `show-map-at-coordinates`** uses **Static Maps** (`static-maps-backend.googleapis.com`) and **Maps Embed** (`maps-embed-backend.googleapis.com`). If you get *API key is not authorized to use this service*, enable both APIs on the project and add them to the key’s **API restrictions** (same key as Places is fine):
 
 ```fish
-gcloud services enable static-maps-backend.googleapis.com --project=coba-409011
+gcloud services enable static-maps-backend.googleapis.com maps-embed-backend.googleapis.com --project=coba-409011
 gcloud services api-keys update projects/PROJECT_NUMBER/locations/global/keys/KEY_ID \
   --project=coba-409011 \
   --api-target=service=places.googleapis.com \
-  --api-target=service=static-maps-backend.googleapis.com
+  --api-target=service=static-maps-backend.googleapis.com \
+  --api-target=service=maps-embed-backend.googleapis.com
 ```
 
 [Credentials](https://console.cloud.google.com/apis/credentials?project=coba-409011) → your key → **API restrictions**.

@@ -9,7 +9,7 @@ Uses [xmcp](https://xmcp.dev/) with the [Next.js adapter](https://github.com/bas
 | Tool | Purpose | Output |
 |------|---------|--------|
 | `search-place` | Find places (default **3**/page, relevance order; rating, website, phone, Maps URL) | **JSON** (`results`, `nextPageToken`, `hasMore`) |
-| `show-map-at-coordinates` | Static map image for lat/lng | **PNG image** + **JSON** metadata (use after `search-place`) |
+| `show-map-at-coordinates` | Embedded Google Map for lat/lng (ChatGPT Apps widget) | **structuredContent** + inline widget in ChatGPT |
 
 Typical flow: `search-place` → read `primary.latitude` / `primary.longitude` → `show-map-at-coordinates`.
 
@@ -61,7 +61,20 @@ node scripts/test-mcp.mjs
 1. Add `src/tools/your-tool.ts` with `schema`, `metadata`, and a `default` async handler.
 2. Restart dev or run `xmcp build` so `.xmcp/adapter` is regenerated.
 
+## MCP Apps + ChatGPT (`show-map-at-coordinates`)
+
+The map tool advertises UI metadata (`_meta.ui.resourceUri`, `openai/outputTemplate`) and serves a `ui://` HTML resource. Verify with:
+
+```fish
+pnpm dlx @mcpjam/cli apps conformance --url http://localhost:3000/mcp
+```
+
+- Widget bundle: `dist/client/*.bundle.js` (served at `/mcp-widgets/...`)
+- Tool result: `structuredContent` with `embedUrl`, `imageBase64`, and map metadata; `content` includes full JSON text + image
+- Widget: `src/tools/show-map-at-coordinates.tsx` (same pattern as [xmcp counter example](https://github.com/basementstudio/xmcp/blob/main/examples/mcp-app-react/src/tools/counter.tsx))
+
+Set `NEXT_PUBLIC_GPT_APP_ORIGIN` to your public HTTPS URL when using ChatGPT (widget script + CSP).
+
 ## Notes
 
-- Tool results are pretty-printed JSON (no MCP Apps HTML widget for now).
 - Usage bills against your Google Maps Platform quotas.

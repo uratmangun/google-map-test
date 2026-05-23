@@ -1,21 +1,55 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import type { z } from "zod";
+import { z } from "zod";
+
+import { buildShowMapToolResult } from "@/lib/google-maps/show-map-payload";
+import {
+  metadata as showMapMetadata,
+  schema as showMapSchema,
+} from "@/lib/mcp/show-map-tool";
+import { registerUiResources, toolUiMetaFor } from "@/lib/mcp/ui-resources";
 
 type XmcpToolEntry = {
   description: string;
   inputSchema: z.ZodObject<z.ZodRawShape>;
+  _meta?: Record<string, unknown>;
   execute: (args: Record<string, unknown>) => Promise<unknown>;
 };
+
+function asExecute(
+  fn: (args: Record<string, unknown>) => Promise<unknown>,
+): (args: Record<string, unknown>) => Promise<unknown> {
+  return fn;
+}
 
 let toolsPromise: Promise<Record<string, XmcpToolEntry>> | null = null;
 
 async function loadXmcpTools(): Promise<Record<string, XmcpToolEntry>> {
   if (!toolsPromise) {
-    toolsPromise = import("../../.xmcp/tools.js").then((mod) => mod.tools);
+    toolsPromise = (async () => {
+      const searchPlace = await import("@/src/tools/search-place");
+
+      return {
+        "search-place": {
+          description: searchPlace.metadata.description,
+          inputSchema: z.object(searchPlace.schema),
+          execute: asExecute(
+            searchPlace.default as (
+              args: Record<string, unknown>,
+            ) => Promise<unknown>,
+          ),
+        },
+        "show-map-at-coordinates": {
+          description: showMapMetadata.description,
+          inputSchema: z.object(showMapSchema),
+          _meta: toolUiMetaFor("show-map-at-coordinates"),
+          execute: async () => ({}),
+        },
+      };
+    })();
   }
-  return toolsPromise;
+  return toolsPromise as Promise<Record<string, XmcpToolEntry>>;
 }
 
 function normalizeToolResult(result: unknown): CallToolResult {
@@ -49,9 +83,16 @@ async function createMcpServer(): Promise<McpServer> {
         "Use search-place when the user needs a location, address, coordinates, or map center.",
         "Pass a clear place query (landmark + city, business name, or address).",
         "The tool returns a human summary plus structured JSON with primary and alternate matches.",
+        "Use show-map-at-coordinates after search-place to render a map at primary.latitude/longitude.",
       ].join(" "),
+      capabilities: {
+        tools: { listChanged: true },
+        resources: { listChanged: true, subscribe: false },
+      },
     },
   );
+
+  registerUiResources(server);
 
   const tools = await loadXmcpTools();
   for (const [name, tool] of Object.entries(tools)) {
@@ -60,15 +101,75 @@ async function createMcpServer(): Promise<McpServer> {
       {
         description: tool.description,
         inputSchema: tool.inputSchema,
+        _meta: tool._meta,
       },
-      async (args) => normalizeToolResult(await tool.execute(args)),
+      async (args) => {
+        if (name === "show-map-at-coordinates") {
+          const latitude = Number(args.latitude);
+          const longitude = Number(args.longitude);
+          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            return normalizeToolResult({
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(
+                    { error: "latitude and longitude are required." },
+                    null,
+                    2,
+                  ),
+                },
+              ],
+              isError: true,
+            });
+          }
+          try {
+            const result = await buildShowMapToolResult({
+              latitude,
+              longitude,
+              zoom:
+                args.zoom !== undefined ? Number(args.zoom) : undefined,
+              maptype:
+                typeof args.maptype === "string"
+                  ? (args.maptype as
+                      | "roadmap"
+                      | "satellite"
+                      | "terrain"
+                      | "hybrid")
+                  : undefined,
+            });
+            const uiMeta = toolUiMetaFor("show-map-at-coordinates");
+            return normalizeToolResult({
+              ...result,
+              _meta: uiMeta,
+            });
+          } catch (err) {
+            const message =
+              err instanceof Error
+                ? err.message
+                : "Static map request failed.";
+            return normalizeToolResult({
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(
+                    { error: message, latitude, longitude },
+                    null,
+                    2,
+                  ),
+                },
+              ],
+              isError: true,
+            });
+          }
+        }
+        return normalizeToolResult(await tool.execute(args));
+      },
     );
   }
 
   return server;
 }
 
-/** Materialize JSON bodies so the MCP server can close before the client reads a stream. */
 async function bufferResponse(response: Response): Promise<Response> {
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("text/event-stream") || !response.body) {
