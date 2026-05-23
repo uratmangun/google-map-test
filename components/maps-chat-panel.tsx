@@ -1,8 +1,11 @@
 "use client";
 
-import { DefaultChatTransport } from "ai";
 import { useChat } from "@ai-sdk/react";
-import type { UIMessage } from "ai";
+import {
+  DefaultChatTransport,
+  lastAssistantMessageIsCompleteWithToolCalls,
+  type UIMessage,
+} from "ai";
 import {
   AlertCircleIcon,
   CopyIcon,
@@ -33,6 +36,17 @@ import {
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message";
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+} from "@/components/ai-elements/tool";
+import { MapsToolResult } from "@/components/maps-tool-result";
+import {
+  formatToolTitle,
+  isToolPart,
+} from "@/lib/maps-chat-shared";
 import { MapsModelSelector } from "@/components/maps-model-selector";
 import {
   PromptInput,
@@ -55,10 +69,10 @@ const MESSAGE_ACTION_CLASS =
   "size-7 rounded-lg text-[#64748b] hover:bg-[#1a73e8] hover:text-white [&_svg]:text-current hover:[&_svg]:text-white";
 
 const SUGGESTED_PROMPTS = [
-  "Find parks near me",
-  "Directions to Soekarno-Hatta Airport",
-  "Best-rated restaurants within 2 km",
-  "Coffee shops open now nearby",
+  "list all the gym in lisbon",
+  "Where to eat in singapore",
+  "list all the museum in jakarta",
+  "Coffee shops in melbourne",
 ];
 
 type ProviderSettings = {
@@ -226,6 +240,8 @@ export function MapsChatPanel({
     id: threadId,
     messages: initialMessages,
     transport,
+    sendAutomaticallyWhen: ({ messages: nextMessages }) =>
+      lastAssistantMessageIsCompleteWithToolCalls({ messages: nextMessages }),
   });
 
   useEffect(() => {
@@ -396,6 +412,10 @@ export function MapsChatPanel({
 
             {chat.messages.map((message) => {
               const textParts = message.parts.filter((part) => part.type === "text");
+              const toolParts =
+                message.role === "assistant"
+                  ? message.parts.filter(isToolPart)
+                  : [];
               const messageText = textParts.map((part) => part.text).join("\n");
               const hasText = messageText.trim().length > 0;
 
@@ -407,6 +427,33 @@ export function MapsChatPanel({
                     message.role === "user" && "ml-auto items-end",
                   )}
                 >
+                  {toolParts.map((part) => (
+                    <Tool
+                      key={part.toolCallId}
+                      open={part.state === "output-available"}
+                    >
+                      {part.type === "dynamic-tool" ? (
+                        <ToolHeader
+                          type={part.type}
+                          state={part.state}
+                          toolName={part.toolName}
+                          title={formatToolTitle(part)}
+                        />
+                      ) : (
+                        <ToolHeader
+                          type={part.type}
+                          state={part.state}
+                          title={formatToolTitle(part)}
+                        />
+                      )}
+                      <ToolContent>
+                        <ToolInput input={part.input} />
+                        <MapsToolResult part={part} />
+                      </ToolContent>
+                    </Tool>
+                  ))}
+
+                  {(message.role === "user" || hasText) && (
                   <Message
                     from={message.role}
                     className={cn(
@@ -434,6 +481,7 @@ export function MapsChatPanel({
                       ))}
                     </MessageContent>
                   </Message>
+                  )}
                   <MessageActions className="h-7">
                     {hasText ? (
                       <MessageAction

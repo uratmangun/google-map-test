@@ -61,6 +61,10 @@ node scripts/test-mcp.mjs
 1. Add `src/tools/your-tool.ts` with `schema`, `metadata`, and a `default` async handler.
 2. Restart dev or run `xmcp build` so `.xmcp/adapter` is regenerated.
 
+## In-app chat (`/api/chat`)
+
+The Maps assistant chat connects to the same MCP server via [`@ai-sdk/mcp`](https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools) (`MCP_CHAT_URL`, default `http://127.0.0.1:3000/mcp`). The model can run multiple tool steps (`search-place` → `show-map-at-coordinates`) with ai-elements `Tool` UI in the chat panel.
+
 ## MCP Apps + ChatGPT (`show-map-at-coordinates`)
 
 The map tool advertises UI metadata (`_meta.ui.resourceUri`, `openai/outputTemplate`) and serves a `ui://` HTML resource. Verify with:
