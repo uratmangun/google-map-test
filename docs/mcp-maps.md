@@ -1,0 +1,64 @@
+# Google Maps MCP (Next.js + xmcp)
+
+HTTP MCP endpoint: **`http://localhost:3000/mcp`** (same origin as the Next.js app).
+
+Uses [xmcp](https://xmcp.dev/) with the [Next.js adapter](https://github.com/basementstudio/xmcp/tree/main/examples/with-nextjs). Tools live in `src/tools/`; `xmcp build` generates `.xmcp/tools.js`. The route in `lib/mcp/xmcp-http.ts` serves Streamable HTTP using xmcp’s tool registry (works with Turbopack; `@xmcp/adapter` CJS export is optional via `scripts/patch-xmcp-adapter.mjs`).
+
+## Tools
+
+| Tool | Purpose | Output |
+|------|---------|--------|
+| `search-place` | Find places by name or address | **Text summary** + **structured JSON** (coordinates, matches, map center) |
+
+## Setup
+
+1. Enable **Places API (New)** on your GCP project.
+2. Set `GOOGLE_MAPS_API_KEY` in `.env.local` (server-side; never commit).
+3. Run the app:
+
+```fish
+pnpm install
+pnpm dev
+```
+
+`pnpm dev` runs `xmcp dev` (watches tools) and `next dev` together. For production, `pnpm build` runs `xmcp build` before `next build`.
+
+## Connect in Cursor
+
+```json
+{
+  "mcpServers": {
+    "google-maps": {
+      "url": "http://localhost:3000/mcp"
+    }
+  }
+}
+```
+
+Restart Cursor after changing MCP config.
+
+## Test with MCP Inspector
+
+With `pnpm dev` running, open the [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector):
+
+```fish
+pnpm dlx @modelcontextprotocol/inspector --transport http --server-url http://localhost:3000/mcp
+```
+
+In the UI: connect with **HTTP**, URL `http://localhost:3000/mcp`, then use **Tools** → `search-place` (e.g. query `Eiffel Tower Paris`).
+
+CLI smoke test:
+
+```fish
+node scripts/test-mcp.mjs
+```
+
+## Adding tools
+
+1. Add `src/tools/your-tool.ts` with `schema`, `metadata`, and a `default` async handler.
+2. Restart dev or run `xmcp build` so `.xmcp/adapter` is regenerated.
+
+## Notes
+
+- Tool results are pretty-printed JSON (no MCP Apps HTML widget for now).
+- Usage bills against your Google Maps Platform quotas.

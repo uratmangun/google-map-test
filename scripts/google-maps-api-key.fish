@@ -63,7 +63,7 @@ set -l REFERRERS "http://localhost:*/*,http://127.0.0.1:*/*"
 
 echo ""
 echo "Enabling Maps Platform APIs on $PROJECT ..."
-for api in maps-backend.googleapis.com geocoding-backend.googleapis.com places-backend.googleapis.com
+for api in maps-backend.googleapis.com geocoding-backend.googleapis.com places-backend.googleapis.com static-maps-backend.googleapis.com maps-embed-backend.googleapis.com
     $GCLOUD services enable $api --project=$PROJECT 2>/dev/null
 end
 
@@ -74,6 +74,8 @@ set -l create_out ($GCLOUD services api-keys create \
     --api-target=service=maps-backend.googleapis.com \
     --api-target=service=geocoding-backend.googleapis.com \
     --api-target=service=places-backend.googleapis.com \
+    --api-target=service=static-maps-backend.googleapis.com \
+    --api-target=service=maps-embed-backend.googleapis.com \
     --allowed-referrers=$REFERRERS \
     --format="value(name)" 2>&1)
 

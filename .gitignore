@@ -1,6 +1,8 @@
 node_modules/
 __pycache__/
 .next/
+dist/
+.xmcp/
 out/
 coverage/
 .wrangler/

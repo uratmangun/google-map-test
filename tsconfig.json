@@ -27,11 +27,15 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@xmcp/*": [
+        "./.xmcp/*"
       ]
     }
   },
   "include": [
     "next-env.d.ts",
+    "xmcp-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
