@@ -20,6 +20,7 @@ export function getToolName(part: MapsToolPart): string {
 
 const TOOL_TITLES: Record<string, string> = {
   "search-place": "Search place",
+  "get-place-detail": "Place details",
   "show-map-at-coordinates": "Show map at coordinates",
 };
 

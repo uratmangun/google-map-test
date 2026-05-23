@@ -29,6 +29,7 @@ async function loadXmcpTools(): Promise<Record<string, XmcpToolEntry>> {
   if (!toolsPromise) {
     toolsPromise = (async () => {
       const searchPlace = await import("@/src/tools/search-place");
+      const getPlaceDetail = await import("@/src/tools/get-place-detail");
 
       return {
         "search-place": {
@@ -36,6 +37,15 @@ async function loadXmcpTools(): Promise<Record<string, XmcpToolEntry>> {
           inputSchema: z.object(searchPlace.schema),
           execute: asExecute(
             searchPlace.default as (
+              args: Record<string, unknown>,
+            ) => Promise<unknown>,
+          ),
+        },
+        "get-place-detail": {
+          description: getPlaceDetail.metadata.description,
+          inputSchema: z.object(getPlaceDetail.schema),
+          execute: asExecute(
+            getPlaceDetail.default as (
               args: Record<string, unknown>,
             ) => Promise<unknown>,
           ),
@@ -80,10 +90,9 @@ async function createMcpServer(): Promise<McpServer> {
     },
     {
       instructions: [
-        "Use search-place when the user needs a location, address, coordinates, or map center.",
-        "Pass a clear place query (landmark + city, business name, or address).",
-        "The tool returns a human summary plus structured JSON with primary and alternate matches.",
-        "Use show-map-at-coordinates after search-place to render a map at primary.latitude/longitude.",
+        "Use search-place to find one place per page (TOON: id, name, lat, lng, pagination).",
+        "Use get-place-detail with place.id for address, rating, phone, and website.",
+        "Use show-map-at-coordinates with place.lat and place.lng to get mapUrl and the map widget.",
       ].join(" "),
       capabilities: {
         tools: { listChanged: true },
@@ -146,7 +155,7 @@ async function createMcpServer(): Promise<McpServer> {
             const message =
               err instanceof Error
                 ? err.message
-                : "Static map request failed.";
+                : "Map request failed.";
             return normalizeToolResult({
               content: [
                 {

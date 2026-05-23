@@ -12,16 +12,6 @@ export type MapsSkuDefinition = {
 };
 
 export const SKUS_BY_SERVICE_ID: Record<MapsServiceId, MapsSkuDefinition[]> = {
-  "maps-static": [
-    {
-      skuKey: "static-maps-essentials",
-      label: "Static Maps",
-      tier: "Essentials",
-      freeTierLimit: 10_000,
-      pricePer1000Usd: 2.0,
-      mcpTools: ["show-map-at-coordinates"],
-    },
-  ],
   "maps-embed": [
     {
       skuKey: "embed-essentials",
@@ -40,6 +30,14 @@ export const SKUS_BY_SERVICE_ID: Record<MapsServiceId, MapsSkuDefinition[]> = {
       freeTierLimit: 10_000,
       pricePer1000Usd: 5.0,
       mcpTools: ["search-place"],
+    },
+    {
+      skuKey: "places-details-essentials",
+      label: "Places Details Essentials",
+      tier: "Essentials",
+      freeTierLimit: 10_000,
+      pricePer1000Usd: 5.0,
+      mcpTools: ["get-place-detail"],
     },
   ],
 };

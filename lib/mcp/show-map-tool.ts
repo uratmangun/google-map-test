@@ -6,12 +6,12 @@ export const schema = {
     .number()
     .min(-90)
     .max(90)
-    .describe("Latitude from search-place structuredContent.primary"),
+    .describe("Latitude from search-place or get-place-detail (place.lat)"),
   longitude: z
     .number()
     .min(-180)
     .max(180)
-    .describe("Longitude from search-place structuredContent.primary"),
+    .describe("Longitude from search-place or get-place-detail (place.lng)"),
   zoom: z
     .number()
     .int()
@@ -26,26 +26,13 @@ export const schema = {
 };
 
 export const outputSchema = {
-  center: z.object({
-    latitude: z.number(),
-    longitude: z.number(),
-  }),
-  zoom: z.number(),
-  maptype: z.string(),
-  mimeType: z.string(),
-  size: z.object({
-    width: z.number(),
-    height: z.number(),
-  }),
-  imageBase64: z.string(),
-  embedUrl: z.string().url(),
-  mapsUrl: z.string(),
+  mapUrl: z.string().url(),
 };
 
 export const metadata: ToolMetadata = {
   name: "show-map-at-coordinates",
   description:
-    "Render an embedded Google Map for latitude/longitude. Shows an interactive map widget in ChatGPT and MCP App hosts.",
+    "Render an embedded Google Map for latitude/longitude. Returns mapUrl in TOON; MCP Apps hosts show an interactive iframe widget.",
   annotations: {
     title: "Show map at coordinates",
     readOnlyHint: true,

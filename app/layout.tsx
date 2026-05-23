@@ -18,9 +18,9 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI IDE Template · Clone & Deploy",
+  title: "Maps Assistant",
   description:
-    "A Next.js App Router template with a GitHub CLI clone helper, AI SDK streaming chat, and VPS Podman deployment flow.",
+    "A Maps Assistant that uses Google Maps APIs to help you find places and directions.",
 };
 
 export default function RootLayout({

@@ -30,8 +30,8 @@ try {
     process.exit(1);
   }
 
-  if (result.structuredContent?.primary) {
-    console.log("structuredContent.primary:", result.structuredContent.primary.name);
+  if (result.structuredContent?.place) {
+    console.log("structuredContent.place:", result.structuredContent.place.name);
   } else {
     const text = result.content?.find((c) => c.type === "text")?.text ?? "";
     console.log("text preview:", text.slice(0, 120));

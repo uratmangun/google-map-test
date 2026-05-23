@@ -8,10 +8,13 @@ Uses [xmcp](https://xmcp.dev/) with the [Next.js adapter](https://github.com/bas
 
 | Tool | Purpose | Output |
 |------|---------|--------|
-| `search-place` | Find places (default **3**/page, relevance order; rating, website, phone, Maps URL) | **JSON** (`results`, `nextPageToken`, `hasMore`) |
-| `show-map-at-coordinates` | Embedded Google Map for lat/lng (ChatGPT Apps widget) | **structuredContent** + inline widget in ChatGPT |
+| `search-place` | Find one place per page (relevance order) | **TOON**: `place` (id, name, lat, lng) + `pagination` |
+| `get-place-detail` | Full details for a `place.id` from search | **TOON**: address, rating, phone, website, maps link |
+| `show-map-at-coordinates` | Embedded Google Map for lat/lng (ChatGPT Apps widget) | **TOON**: `mapUrl` + iframe widget in MCP Apps hosts |
 
-Typical flow: `search-place` → read `primary.latitude` / `primary.longitude` → `show-map-at-coordinates`.
+Typical flow: `search-place` → `get-place-detail` (optional) → `show-map-at-coordinates` with `place.lat` / `place.lng`.
+
+Tool text uses [TOON](https://github.com/toon-format/toon) (`@toon-format/toon`) for token-efficient LLM input.
 
 ## Setup
 
@@ -63,7 +66,7 @@ node scripts/test-mcp.mjs
 
 ## In-app chat (`/api/chat`)
 
-The Maps assistant chat connects to the same MCP server via [`@ai-sdk/mcp`](https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools) (`MCP_CHAT_URL`, default `http://127.0.0.1:3000/mcp`). The model can run multiple tool steps (`search-place` → `show-map-at-coordinates`) with ai-elements `Tool` UI in the chat panel.
+The Maps assistant chat connects to the same MCP server via [`@ai-sdk/mcp`](https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools) (`MCP_CHAT_URL`, default `http://127.0.0.1:3000/mcp`). The model can run multiple tool steps (`search-place` → `get-place-detail` → `show-map-at-coordinates`) with ai-elements `Tool` UI in the chat panel.
 
 ## MCP Apps + ChatGPT (`show-map-at-coordinates`)
 
@@ -74,8 +77,8 @@ pnpm dlx @mcpjam/cli apps conformance --url http://localhost:3000/mcp
 ```
 
 - Widget bundle: `dist/client/*.bundle.js` (served at `/mcp-widgets/...`)
-- Tool result: `structuredContent` with `embedUrl`, `imageBase64`, and map metadata; `content` includes full JSON text + image
-- Widget: `src/tools/show-map-at-coordinates.tsx` (same pattern as [xmcp counter example](https://github.com/basementstudio/xmcp/blob/main/examples/mcp-app-react/src/tools/counter.tsx))
+- Tool result: `structuredContent` with `mapUrl` and input `args`; `content` is TOON text only (no static map image)
+- Widget: `src/tools/show-map-at-coordinates.tsx` — iframe only
 
 Set `NEXT_PUBLIC_GPT_APP_ORIGIN` to your public HTTPS URL when using ChatGPT (widget script + CSP).
 

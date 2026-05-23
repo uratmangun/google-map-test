@@ -1,15 +1,9 @@
 import { buildEmbedViewUrl } from "@/lib/google-maps/embed-map";
-import { fetchStaticMapImage } from "@/lib/google-maps/static-map";
+import { formatMapUrlToon } from "@/lib/google-maps/toon";
+import { assertMcpQuotaAvailable } from "@/lib/maps-quota-guard";
 
 export type MapToolPayload = {
-  center: { latitude: number; longitude: number };
-  zoom: number;
-  maptype: string;
-  mimeType: string;
-  size: { width: number; height: number };
-  imageBase64: string;
-  embedUrl: string;
-  mapsUrl: string;
+  mapUrl: string;
 };
 
 export type ShowMapInput = {
@@ -19,46 +13,31 @@ export type ShowMapInput = {
   maptype?: "roadmap" | "satellite" | "terrain" | "hybrid";
 };
 
-function googleMapsUrl(latitude: number, longitude: number): string {
-  return `https://www.google.com/maps?q=${latitude},${longitude}`;
-}
-
 export async function buildShowMapPayload(
   input: ShowMapInput,
 ): Promise<MapToolPayload> {
-  const image = await fetchStaticMapImage(input);
-  const center = image.center;
-
+  await assertMcpQuotaAvailable("show-map-at-coordinates");
   return {
-    center,
-    zoom: image.zoom,
-    maptype: image.maptype,
-    mimeType: image.mimeType,
-    size: image.size,
-    imageBase64: image.data,
-    embedUrl: buildEmbedViewUrl(input),
-    mapsUrl: googleMapsUrl(center.latitude, center.longitude),
+    mapUrl: buildEmbedViewUrl(input),
   };
 }
 
 export async function buildShowMapToolResult(input: ShowMapInput) {
-  const map = await buildShowMapPayload(input);
-  // MCP Apps hosts pass tool-result props from structuredContent.args first;
-  // ChatGPT may read flat structuredContent via useToolOutput.
+  const { mapUrl } = await buildShowMapPayload(input);
   const structuredContent = {
-    ...map,
-    args: { ...input, ...map },
+    mapUrl,
+    args: {
+      latitude: input.latitude,
+      longitude: input.longitude,
+      ...(input.zoom !== undefined ? { zoom: input.zoom } : {}),
+      ...(input.maptype !== undefined ? { maptype: input.maptype } : {}),
+    },
   };
   return {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify(structuredContent, null, 2),
-      },
-      {
-        type: "image" as const,
-        data: map.imageBase64,
-        mimeType: map.mimeType,
+        text: formatMapUrlToon(mapUrl),
       },
     ],
     structuredContent,

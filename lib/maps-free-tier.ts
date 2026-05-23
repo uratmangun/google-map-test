@@ -7,17 +7,17 @@ export const MAPS_SERVICE_CATEGORIES = ["maps", "places"] as const;
 
 export type MapsServiceCategory = (typeof MAPS_SERVICE_CATEGORIES)[number];
 
-/** Keep in sync with `src/tools/` (search-place, show-map-at-coordinates). */
+/** Keep in sync with `src/tools/`. */
+export const MCP_MAPS_TOOL_NAMES = [
+  "search-place",
+  "get-place-detail",
+  "show-map-at-coordinates",
+] as const;
+
+export type McpMapsToolName = (typeof MCP_MAPS_TOOL_NAMES)[number];
+
+/** Keep in sync with `src/tools/` and quota monitoring. */
 export const MAPS_SERVICES = [
-  {
-    id: "maps-static",
-    service: "static-maps-backend.googleapis.com",
-    label: "Static Maps",
-    category: "maps" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: 10_000,
-    mcpTool: "show-map-at-coordinates" as const,
-  },
   {
     id: "maps-embed",
     service: "maps-embed-backend.googleapis.com",
@@ -41,8 +41,6 @@ export const MAPS_SERVICES = [
 export type MapsServiceId = (typeof MAPS_SERVICES)[number]["id"];
 
 export type MapsServiceDefinition = (typeof MAPS_SERVICES)[number];
-
-export type McpMapsToolName = MapsServiceDefinition["mcpTool"];
 
 const CATEGORY_LABELS: Record<MapsServiceCategory, string> = {
   maps: "Maps",

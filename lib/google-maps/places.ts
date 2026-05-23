@@ -1,3 +1,4 @@
+import { getGoogleMapsApiKey } from "@/lib/google-maps/api-key";
 import { assertMcpQuotaAvailable } from "@/lib/maps-quota-guard";
 import {
   fetchStaticMapImage,
@@ -6,7 +7,8 @@ import {
 
 const PLACES_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
 
-export const DEFAULT_SEARCH_PAGE_SIZE = 3;
+/** MCP search-place returns one place per page. */
+export const SEARCH_PAGE_SIZE = 1;
 
 const TEXT_SEARCH_FIELD_MASK = [
   "places.id",
@@ -41,8 +43,6 @@ export type PlaceResult = {
 };
 
 export type SearchPlacesOptions = {
-  /** 1–20 per Places Text Search request (default 3). */
-  pageSize?: number;
   /** Pass `nextPageToken` from a previous response for the next page. */
   pageToken?: string;
 };
@@ -70,18 +70,6 @@ type PlacesSearchResponse = {
   nextPageToken?: string;
 };
 
-function getApiKey(): string {
-  const key =
-    process.env.GOOGLE_MAPS_API_KEY?.trim() ||
-    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim();
-  if (!key) {
-    throw new Error(
-      "Missing GOOGLE_MAPS_API_KEY. Add it to .env.local (see docs/google-maps-api-key.md).",
-    );
-  }
-  return key;
-}
-
 export async function searchPlaces(
   query: string,
   options: SearchPlacesOptions = {},
@@ -93,13 +81,10 @@ export async function searchPlaces(
     throw new Error("Search query cannot be empty.");
   }
 
-  const pageSize = Math.min(
-    20,
-    Math.max(1, options.pageSize ?? DEFAULT_SEARCH_PAGE_SIZE),
-  );
+  const pageSize = SEARCH_PAGE_SIZE;
   const pageToken = options.pageToken?.trim();
 
-  const apiKey = getApiKey();
+  const apiKey = getGoogleMapsApiKey();
   const body: Record<string, unknown> = { textQuery, pageSize };
   if (pageToken) {
     body.pageToken = pageToken;
@@ -175,7 +160,7 @@ export async function fetchStaticMapAsBase64(
 }
 
 export function buildEmbedMapUrl(place: PlaceResult): string {
-  const apiKey = getApiKey();
+  const apiKey = getGoogleMapsApiKey();
   const params = new URLSearchParams({
     key: apiKey,
     q: `${place.latitude},${place.longitude}`,

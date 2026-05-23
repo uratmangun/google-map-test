@@ -13,8 +13,10 @@ function isQuotaGuardEnabled() {
 }
 
 function serviceIdForMcpTool(tool: McpMapsTool): MapsServiceId {
-  if (tool === "search-place") return "places";
-  return "maps-static";
+  if (tool === "search-place" || tool === "get-place-detail") {
+    return "places";
+  }
+  return "maps-embed";
 }
 
 /**
