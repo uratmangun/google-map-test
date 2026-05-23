@@ -19,6 +19,7 @@ import { LightCard } from "@/components/maps-quota-light-card";
 import { authClient } from "@/lib/auth-client";
 import {
   getServicesByCategory,
+  MAPS_SERVICE_CATEGORIES,
   MAPS_SERVICES,
   type MapsServiceCategory,
   type MapsServiceId,
@@ -130,12 +131,12 @@ function initialCategoryBilling(): Record<
   MapsServiceCategory,
   CategoryBillingState
 > {
-  return {
-    maps: { loading: false, error: null, data: null },
-    routes: { loading: false, error: null, data: null },
-    places: { loading: false, error: null, data: null },
-    environment: { loading: false, error: null, data: null },
-  };
+  return Object.fromEntries(
+    MAPS_SERVICE_CATEGORIES.map((category) => [
+      category,
+      { loading: false, error: null, data: null },
+    ]),
+  ) as Record<MapsServiceCategory, CategoryBillingState>;
 }
 
 function matchesApiSearch(
@@ -457,7 +458,7 @@ export function MapsQuotaDashboard() {
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search APIs by name (e.g. Dynamic Maps, Places)…"
+              placeholder="Search APIs (Static Maps, Maps Embed, Places)…"
               className="w-full rounded-xl border border-[#e2e8f0] bg-white py-2.5 pl-10 pr-10 text-sm text-[#0f172a] shadow-sm outline-none transition placeholder:text-[#94a3b8] focus:border-[#1a73e8] focus:ring-2 focus:ring-[#1a73e8]/20"
               aria-label="Search APIs by name"
             />
@@ -542,6 +543,12 @@ export function MapsQuotaDashboard() {
                           </h3>
                           <p className="text-[11px] text-[#94a3b8]">
                             {definition.service}
+                          </p>
+                          <p className="text-[10px] text-[#64748b]">
+                            MCP tool:{" "}
+                            <code className="rounded bg-[#f1f5f9] px-1 py-0.5 text-[10px]">
+                              {definition.mcpTool}
+                            </code>
                           </p>
                           <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-[#64748b]">
                             {definition.tier}

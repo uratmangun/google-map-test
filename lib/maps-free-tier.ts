@@ -1,27 +1,14 @@
 /**
- * Google Maps Platform APIs with Essentials (or documented) monthly free usage.
+ * Maps Platform APIs used by MCP tools in `src/tools/`.
  * Monitoring uses Cloud Monitoring `consumed_api` → resource.label.service.
  * @see https://developers.google.com/maps/billing-and-pricing/pricing
  */
-export const MAPS_SERVICE_CATEGORIES = [
-  "maps",
-  "routes",
-  "places",
-  "environment",
-] as const;
+export const MAPS_SERVICE_CATEGORIES = ["maps", "places"] as const;
 
 export type MapsServiceCategory = (typeof MAPS_SERVICE_CATEGORIES)[number];
 
+/** Keep in sync with `src/tools/` (search-place, show-map-at-coordinates). */
 export const MAPS_SERVICES = [
-  // —— Maps (loads & tiles) ——
-  {
-    id: "maps-dynamic",
-    service: "maps-backend.googleapis.com",
-    label: "Dynamic Maps",
-    category: "maps" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: 10_000,
-  },
   {
     id: "maps-static",
     service: "static-maps-backend.googleapis.com",
@@ -29,6 +16,7 @@ export const MAPS_SERVICES = [
     category: "maps" as const,
     tier: "Essentials" as const,
     freeTierLimit: 10_000,
+    mcpTool: "show-map-at-coordinates" as const,
   },
   {
     id: "maps-embed",
@@ -37,97 +25,8 @@ export const MAPS_SERVICES = [
     category: "maps" as const,
     tier: "Essentials" as const,
     freeTierLimit: null,
+    mcpTool: "show-map-at-coordinates" as const,
   },
-  {
-    id: "maps-android",
-    service: "maps-android-backend.googleapis.com",
-    label: "Maps SDK (Android)",
-    category: "maps" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: null,
-  },
-  {
-    id: "maps-ios",
-    service: "maps-ios-backend.googleapis.com",
-    label: "Maps SDK (iOS)",
-    category: "maps" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: null,
-  },
-  {
-    id: "elevation",
-    service: "elevation-backend.googleapis.com",
-    label: "Elevation",
-    category: "maps" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: 5_000,
-  },
-  {
-    id: "street-view-static",
-    service: "street-view-image-backend.googleapis.com",
-    label: "Static Street View",
-    category: "maps" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: 10_000,
-  },
-  {
-    id: "map-tiles",
-    service: "tile.googleapis.com",
-    label: "Map Tiles (2D)",
-    category: "maps" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: 100_000,
-  },
-  {
-    id: "aerial-view",
-    service: "aerialview.googleapis.com",
-    label: "Aerial View",
-    category: "maps" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: 5_000,
-  },
-  // —— Routes ——
-  {
-    id: "routes",
-    service: "routes.googleapis.com",
-    label: "Routes API",
-    category: "routes" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: 10_000,
-  },
-  {
-    id: "directions",
-    service: "directions-backend.googleapis.com",
-    label: "Directions (legacy)",
-    category: "routes" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: 10_000,
-  },
-  {
-    id: "distance-matrix",
-    service: "distance-matrix-backend.googleapis.com",
-    label: "Distance Matrix (legacy)",
-    category: "routes" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: 10_000,
-  },
-  {
-    id: "roads",
-    service: "roads.googleapis.com",
-    label: "Roads API",
-    category: "routes" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: 5_000,
-  },
-  {
-    id: "route-optimization",
-    service: "routeoptimization.googleapis.com",
-    label: "Route Optimization",
-    category: "routes" as const,
-    tier: "Pro" as const,
-    freeTierLimit: 5_000,
-  },
-  // —— Places & location ——
   {
     id: "places",
     service: "places.googleapis.com",
@@ -135,71 +34,7 @@ export const MAPS_SERVICES = [
     category: "places" as const,
     tier: "Essentials" as const,
     freeTierLimit: 10_000,
-  },
-  {
-    id: "geocoding",
-    service: "geocoding-backend.googleapis.com",
-    label: "Geocoding",
-    category: "places" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: 10_000,
-  },
-  {
-    id: "geolocation",
-    service: "geolocation.googleapis.com",
-    label: "Geolocation",
-    category: "places" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: 10_000,
-  },
-  {
-    id: "timezone",
-    service: "timezone-backend.googleapis.com",
-    label: "Time Zone",
-    category: "places" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: 10_000,
-  },
-  {
-    id: "address-validation",
-    service: "addressvalidation.googleapis.com",
-    label: "Address Validation",
-    category: "places" as const,
-    tier: "Pro" as const,
-    freeTierLimit: 5_000,
-  },
-  // —— Environment ——
-  {
-    id: "air-quality",
-    service: "airquality.googleapis.com",
-    label: "Air Quality",
-    category: "environment" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: 10_000,
-  },
-  {
-    id: "weather",
-    service: "weather.googleapis.com",
-    label: "Weather",
-    category: "environment" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: 10_000,
-  },
-  {
-    id: "pollen",
-    service: "pollen.googleapis.com",
-    label: "Pollen",
-    category: "environment" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: 5_000,
-  },
-  {
-    id: "solar",
-    service: "solar.googleapis.com",
-    label: "Solar API",
-    category: "environment" as const,
-    tier: "Essentials" as const,
-    freeTierLimit: 10_000,
+    mcpTool: "search-place" as const,
   },
 ] as const;
 
@@ -207,11 +42,11 @@ export type MapsServiceId = (typeof MAPS_SERVICES)[number]["id"];
 
 export type MapsServiceDefinition = (typeof MAPS_SERVICES)[number];
 
+export type McpMapsToolName = MapsServiceDefinition["mcpTool"];
+
 const CATEGORY_LABELS: Record<MapsServiceCategory, string> = {
   maps: "Maps",
-  routes: "Routes",
-  places: "Places & location",
-  environment: "Environment",
+  places: "Places",
 };
 
 export function getCategoryLabel(category: MapsServiceCategory): string {

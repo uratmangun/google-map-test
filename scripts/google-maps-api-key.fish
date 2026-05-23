@@ -62,31 +62,11 @@ set -l KEY_NAME "google-map-test-dev"
 set -l REFERRERS "http://localhost:*/*,http://127.0.0.1:*/*"
 
 echo ""
-echo "Enabling Maps Platform APIs on $PROJECT (Essentials free-tier set; see lib/maps-free-tier.ts) ..."
+echo "Enabling Maps Platform APIs on $PROJECT (MCP tools in src/tools/; see lib/maps-free-tier.ts) ..."
 set -l MAPS_APIS \
-    maps-backend.googleapis.com \
-    static-maps-backend.googleapis.com \
-    maps-embed-backend.googleapis.com \
-    maps-android-backend.googleapis.com \
-    maps-ios-backend.googleapis.com \
-    elevation-backend.googleapis.com \
-    street-view-image-backend.googleapis.com \
-    tile.googleapis.com \
-    aerialview.googleapis.com \
-    routes.googleapis.com \
-    directions-backend.googleapis.com \
-    distance-matrix-backend.googleapis.com \
-    roads.googleapis.com \
-    routeoptimization.googleapis.com \
     places.googleapis.com \
-    geocoding-backend.googleapis.com \
-    geolocation.googleapis.com \
-    timezone-backend.googleapis.com \
-    addressvalidation.googleapis.com \
-    airquality.googleapis.com \
-    weather.googleapis.com \
-    pollen.googleapis.com \
-    solar.googleapis.com
+    static-maps-backend.googleapis.com \
+    maps-embed-backend.googleapis.com
 for api in $MAPS_APIS
     $GCLOUD services enable $api --project=$PROJECT 2>/dev/null
 end
@@ -95,13 +75,9 @@ echo "Creating API key ($KEY_NAME) ..."
 set -l create_out ($GCLOUD services api-keys create \
     --project=$PROJECT \
     --display-name=$KEY_NAME \
-    --api-target=service=maps-backend.googleapis.com \
-    --api-target=service=geocoding-backend.googleapis.com \
     --api-target=service=places.googleapis.com \
     --api-target=service=static-maps-backend.googleapis.com \
     --api-target=service=maps-embed-backend.googleapis.com \
-    --api-target=service=routes.googleapis.com \
-    --api-target=service=roads.googleapis.com \
     --allowed-referrers=$REFERRERS \
     --format="value(name)" 2>&1)
 

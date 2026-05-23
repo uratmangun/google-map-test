@@ -116,13 +116,20 @@ gcloud services api-keys update projects/PROJECT_NUMBER/locations/global/keys/KE
 
 ### APIs on `/maps-usage`
 
-The quota dashboard tracks **22** Google Maps Platform products with Essentials (or Pro) monthly free caps — grouped as Maps, Routes, Places & location, and Environment. Each card maps to a Cloud Monitoring `consumed_api` service name. Enable APIs in [Maps API list](https://console.cloud.google.com/google/maps-apis/api-list?project=coba-409011) or:
+The quota dashboard tracks only APIs used by MCP tools in `src/tools/`:
+
+| MCP tool | APIs |
+|----------|------|
+| `search-place` | Places API (New) |
+| `show-map-at-coordinates` | Static Maps, Maps Embed |
+
+Enable on the project:
 
 ```fish
-gcloud services enable places.googleapis.com routes.googleapis.com static-maps-backend.googleapis.com maps-embed-backend.googleapis.com roads.googleapis.com timezone-backend.googleapis.com tile.googleapis.com pollen.googleapis.com solar.googleapis.com weather.googleapis.com --project=coba-409011
+gcloud services enable places.googleapis.com static-maps-backend.googleapis.com maps-embed-backend.googleapis.com --project=coba-409011
 ```
 
-Full list: `lib/maps-free-tier.ts`. [Pricing & free caps](https://developers.google.com/maps/billing-and-pricing/pricing).
+Definitions: `lib/maps-free-tier.ts`. [Pricing & free caps](https://developers.google.com/maps/billing-and-pricing/pricing).
 
 ## Troubleshooting
 
