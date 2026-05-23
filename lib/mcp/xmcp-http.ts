@@ -5,10 +5,15 @@ import { z } from "zod";
 
 import { buildShowDirectionsToolResult } from "@/lib/google-maps/show-directions-payload";
 import { buildShowMapToolResult } from "@/lib/google-maps/show-map-payload";
+import { buildShowStreetViewToolResult } from "@/lib/google-maps/show-street-view-payload";
 import {
   metadata as showDirectionsMetadata,
   schema as showDirectionsSchema,
 } from "@/lib/mcp/show-directions-tool";
+import {
+  metadata as showStreetViewMetadata,
+  schema as showStreetViewSchema,
+} from "@/lib/mcp/show-street-view-tool";
 import {
   metadata as showMapMetadata,
   schema as showMapSchema,
@@ -67,6 +72,12 @@ async function loadXmcpTools(): Promise<Record<string, XmcpToolEntry>> {
           _meta: toolUiMetaFor("show-directions"),
           execute: async () => ({}),
         },
+        "show-street-view": {
+          description: showStreetViewMetadata.description,
+          inputSchema: z.object(showStreetViewSchema),
+          _meta: toolUiMetaFor("show-street-view"),
+          execute: async () => ({}),
+        },
       };
     })();
   }
@@ -105,6 +116,7 @@ async function createMcpServer(): Promise<McpServer> {
         "Use get-place-detail with place.id for address, rating, phone, and website.",
         "Use show-map-at-coordinates with place.lat and place.lng to get mapUrl and the map widget.",
         "Use show-directions with origin and destination lat/lng for an embedded route preview (mapUrl in TOON).",
+        "Use show-street-view with place.lat and place.lng for an embedded Street View panorama (mapUrl in TOON).",
       ].join(" "),
       capabilities: {
         tools: { listChanged: true },
@@ -247,6 +259,58 @@ async function createMcpServer(): Promise<McpServer> {
                       destinationLatitude,
                       destinationLongitude,
                     },
+                    null,
+                    2,
+                  ),
+                },
+              ],
+              isError: true,
+            });
+          }
+        }
+        if (name === "show-street-view") {
+          const latitude = Number(args.latitude);
+          const longitude = Number(args.longitude);
+          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            return normalizeToolResult({
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(
+                    { error: "latitude and longitude are required." },
+                    null,
+                    2,
+                  ),
+                },
+              ],
+              isError: true,
+            });
+          }
+          try {
+            const result = await buildShowStreetViewToolResult({
+              latitude,
+              longitude,
+              heading:
+                args.heading !== undefined ? Number(args.heading) : undefined,
+              pitch: args.pitch !== undefined ? Number(args.pitch) : undefined,
+              fov: args.fov !== undefined ? Number(args.fov) : undefined,
+            });
+            const uiMeta = toolUiMetaFor("show-street-view");
+            return normalizeToolResult({
+              ...result,
+              _meta: uiMeta,
+            });
+          } catch (err) {
+            const message =
+              err instanceof Error
+                ? err.message
+                : "Street View request failed.";
+            return normalizeToolResult({
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(
+                    { error: message, latitude, longitude },
                     null,
                     2,
                   ),

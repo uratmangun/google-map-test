@@ -12,8 +12,9 @@ Uses [xmcp](https://xmcp.dev/) with the [Next.js adapter](https://github.com/bas
 | `get-place-detail` | Full details for a `place.id` from search | **TOON**: address, rating, phone, website, maps link |
 | `show-map-at-coordinates` | Embedded Google Map for lat/lng (ChatGPT Apps widget) | **TOON**: `mapUrl` + iframe widget in MCP Apps hosts |
 | `show-directions` | Embedded route preview from point A to point B | **TOON**: `mapUrl` (Maps Embed directions mode) + iframe widget |
+| `show-street-view` | Embedded Street View panorama at lat/lng | **TOON**: `mapUrl` (Maps Embed streetview mode) + iframe widget |
 
-Typical flow: `search-place` → `get-place-detail` (optional) → `show-map-at-coordinates` with `place.lat` / `place.lng`, or `show-directions` with origin/destination coordinates when the user wants a route.
+Typical flow: `search-place` → `get-place-detail` (optional) → `show-map-at-coordinates`, `show-directions`, or `show-street-view` with coordinates from the place result.
 
 Tool text uses [TOON](https://github.com/toon-format/toon) (`@toon-format/toon`) for token-efficient LLM input.
 

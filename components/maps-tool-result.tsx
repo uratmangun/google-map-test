@@ -81,15 +81,20 @@ export function MapsToolResult({ part }: { part: MapsToolPart }) {
     return null;
   }
 
-  if (toolName === "show-map-at-coordinates" || toolName === "show-directions") {
+  if (
+    toolName === "show-map-at-coordinates" ||
+    toolName === "show-directions" ||
+    toolName === "show-street-view"
+  ) {
     const mapUrl = resolveMapUrl(part.output);
     if (mapUrl) {
-      return (
-        <MapEmbedPreview
-          mapUrl={mapUrl}
-          title={toolName === "show-directions" ? "Directions preview" : "Map preview"}
-        />
-      );
+      const title =
+        toolName === "show-directions"
+          ? "Directions preview"
+          : toolName === "show-street-view"
+            ? "Street View preview"
+            : "Map preview";
+      return <MapEmbedPreview mapUrl={mapUrl} title={title} />;
     }
   }
 

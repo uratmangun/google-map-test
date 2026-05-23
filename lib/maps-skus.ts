@@ -19,7 +19,11 @@ export const SKUS_BY_SERVICE_ID: Record<MapsServiceId, MapsSkuDefinition[]> = {
       tier: "Essentials",
       freeTierLimit: null,
       pricePer1000Usd: 0,
-      mcpTools: ["show-map-at-coordinates", "show-directions"],
+      mcpTools: [
+        "show-map-at-coordinates",
+        "show-directions",
+        "show-street-view",
+      ],
     },
   ],
   places: [

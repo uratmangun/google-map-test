@@ -3,6 +3,7 @@ import { getGoogleMapsApiKey } from "@/lib/google-maps/static-map";
 
 const EMBED_PLACE_BASE = "https://www.google.com/maps/embed/v1/place";
 const EMBED_DIRECTIONS_BASE = "https://www.google.com/maps/embed/v1/directions";
+const EMBED_STREETVIEW_BASE = "https://www.google.com/maps/embed/v1/streetview";
 
 export type EmbedTravelMode = "driving" | "walking" | "bicycling" | "transit";
 
@@ -51,4 +52,28 @@ export function buildEmbedDirectionsUrl(input: {
     mode: input.mode ?? "driving",
   });
   return `${EMBED_DIRECTIONS_BASE}?${params.toString()}`;
+}
+
+/** Street View mode: interactive panorama at a location (Maps Embed API). */
+export function buildEmbedStreetViewUrl(input: {
+  latitude: number;
+  longitude: number;
+  heading?: number;
+  pitch?: number;
+  fov?: number;
+}): string {
+  const params = new URLSearchParams({
+    key: getGoogleMapsApiKey(),
+    location: formatLatLng(input.latitude, input.longitude),
+  });
+  if (input.heading !== undefined) {
+    params.set("heading", String(input.heading));
+  }
+  if (input.pitch !== undefined) {
+    params.set("pitch", String(input.pitch));
+  }
+  if (input.fov !== undefined) {
+    params.set("fov", String(input.fov));
+  }
+  return `${EMBED_STREETVIEW_BASE}?${params.toString()}`;
 }

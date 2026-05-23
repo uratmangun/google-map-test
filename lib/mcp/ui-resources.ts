@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { metadata as showDirectionsMetadata } from "@/lib/mcp/show-directions-tool";
 import { metadata as showMapMetadata } from "@/lib/mcp/show-map-tool";
+import { metadata as showStreetViewMetadata } from "@/lib/mcp/show-street-view-tool";
 
 import { buildMcpAppWidgetHtml } from "./ui-widget-html";
 import {
@@ -22,6 +23,9 @@ const SHOW_MAP_BUNDLE = "src_tools_show-map-at-coordinates_3c4ef7.bundle.js";
 /** Set after `xmcp build`; hash suffix matches dist/client output. */
 const SHOW_DIRECTIONS_BUNDLE =
   "src_tools_show-directions_bdc805.bundle.js";
+/** Set after `xmcp build`; hash suffix matches dist/client output. */
+const SHOW_STREET_VIEW_BUNDLE =
+  "src_tools_show-street-view_50028c.bundle.js";
 
 export const UI_WIDGETS: UiWidgetRegistration[] = [
   {
@@ -35,6 +39,12 @@ export const UI_WIDGETS: UiWidgetRegistration[] = [
     bundleFile: SHOW_DIRECTIONS_BUNDLE,
     description: "Embedded directions widget for show-directions",
     toolMetaSource: showDirectionsMetadata._meta,
+  },
+  {
+    toolName: "show-street-view",
+    bundleFile: SHOW_STREET_VIEW_BUNDLE,
+    description: "Embedded Street View widget for show-street-view",
+    toolMetaSource: showStreetViewMetadata._meta,
   },
 ];
 

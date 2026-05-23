@@ -101,7 +101,7 @@ Usage counts are loaded on demand per API card (Refresh). The server needs ADC +
 
 `GCP_PROJECT_ID` must be the same project as `GOOGLE_MAPS_API_KEY`. The Places card reads **`places.googleapis.com`** (Places API New), not legacy `places-backend.googleapis.com`.
 
-**MCP map tools** (`show-map-at-coordinates`, `show-directions`) use **Maps Embed** (`maps-embed-backend.googleapis.com`). If you get *API key is not authorized to use this service*, enable Maps Embed on the project and add it to the key’s **API restrictions** (same key as Places is fine):
+**MCP map tools** (`show-map-at-coordinates`, `show-directions`, `show-street-view`) use **Maps Embed** (`maps-embed-backend.googleapis.com`). If you get *API key is not authorized to use this service*, enable Maps Embed on the project and add it to the key’s **API restrictions** (same key as Places is fine):
 
 ```fish
 gcloud services enable maps-embed-backend.googleapis.com --project=coba-409011
@@ -123,6 +123,7 @@ The quota dashboard tracks only APIs used by MCP tools in `src/tools/`:
 | `get-place-detail` | Places API (New) |
 | `show-map-at-coordinates` | Maps Embed |
 | `show-directions` | Maps Embed (directions mode) |
+| `show-street-view` | Maps Embed (streetview mode) |
 
 Enable on the project:
 

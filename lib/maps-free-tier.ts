@@ -13,6 +13,7 @@ export const MCP_MAPS_TOOL_NAMES = [
   "get-place-detail",
   "show-map-at-coordinates",
   "show-directions",
+  "show-street-view",
 ] as const;
 
 export type McpMapsToolName = (typeof MCP_MAPS_TOOL_NAMES)[number];
@@ -26,7 +27,11 @@ export const MAPS_SERVICES = [
     category: "maps" as const,
     tier: "Essentials" as const,
     freeTierLimit: null,
-    mcpTools: ["show-map-at-coordinates", "show-directions"] as const,
+    mcpTools: [
+      "show-map-at-coordinates",
+      "show-directions",
+      "show-street-view",
+    ] as const,
   },
   {
     id: "places",
