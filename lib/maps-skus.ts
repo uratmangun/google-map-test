@@ -19,7 +19,7 @@ export const SKUS_BY_SERVICE_ID: Record<MapsServiceId, MapsSkuDefinition[]> = {
       tier: "Essentials",
       freeTierLimit: null,
       pricePer1000Usd: 0,
-      mcpTools: ["show-map-at-coordinates"],
+      mcpTools: ["show-map-at-coordinates", "show-directions"],
     },
   ],
   places: [
@@ -69,11 +69,14 @@ export function skuUsageFromApiRequests(
   sku: MapsSkuDefinition,
 ) {
   const limit = sku.freeTierLimit;
+  const mcpTools = sku.mcpTools ? [...sku.mcpTools] : undefined;
+
   if (limit === null) {
     return {
       skuKey: sku.skuKey,
       label: sku.label,
       tier: sku.tier,
+      mcpTools,
       used: apiRequestCount,
       limit: null as number | null,
       remaining: null as number | null,
@@ -93,6 +96,7 @@ export function skuUsageFromApiRequests(
     skuKey: sku.skuKey,
     label: sku.label,
     tier: sku.tier,
+    mcpTools,
     used,
     limit,
     remaining,

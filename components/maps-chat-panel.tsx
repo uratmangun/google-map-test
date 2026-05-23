@@ -69,10 +69,10 @@ const MESSAGE_ACTION_CLASS =
   "size-7 rounded-lg text-[#64748b] hover:bg-[#1a73e8] hover:text-white [&_svg]:text-current hover:[&_svg]:text-white";
 
 const SUGGESTED_PROMPTS = [
-  "list all the gym in lisbon",
-  "Where to eat in singapore",
-  "list all the museum in jakarta",
-  "Coffee shops in melbourne",
+  "give me one 5 star rated gym in lisbon",
+  "Where to eat 5 star seafood restaurant in singapore",
+  "show me the location of 1 kfc spot in jakarta",
+  "give me 3 coffee shops location in melbourne",
 ];
 
 type ProviderSettings = {
@@ -258,13 +258,18 @@ export function MapsChatPanel({
   const lastPersistedRef = useRef(initialMessages);
   const restoredThreadRef = useRef<string | null>(null);
 
-  // useChat only applies `messages` when the Chat instance is created. One-time restore if
-  // the hook started empty but we already have persisted thread messages (reload edge case).
+  // useChat only applies `messages` on first mount. Load persisted thread when switching
+  // chats or when the hook started empty before localStorage hydrated — never overwrite
+  // live messages after tool calls (stale initialMessages would erase tool output).
   useEffect(() => {
-    if (restoredThreadRef.current === threadId) {
+    if (restoredThreadRef.current !== threadId) {
+      restoredThreadRef.current = threadId;
+      lastPersistedRef.current = initialMessages;
+      if (initialMessages.length > 0) {
+        chat.setMessages(initialMessages);
+      }
       return;
     }
-    restoredThreadRef.current = threadId;
 
     if (
       initialMessages.length > 0 &&
@@ -274,8 +279,8 @@ export function MapsChatPanel({
       chat.setMessages(initialMessages);
       lastPersistedRef.current = initialMessages;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per thread mount
-  }, [threadId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- thread switch + empty-chat hydrate only
+  }, [threadId, initialMessages]);
 
   // Persist live chat state to the parent (source of truth for reload via localStorage).
   useEffect(() => {

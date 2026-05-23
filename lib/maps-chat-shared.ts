@@ -22,6 +22,7 @@ const TOOL_TITLES: Record<string, string> = {
   "search-place": "Search place",
   "get-place-detail": "Place details",
   "show-map-at-coordinates": "Show map at coordinates",
+  "show-directions": "Show directions",
 };
 
 export function formatToolTitle(part: MapsToolPart): string {

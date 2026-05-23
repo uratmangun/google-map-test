@@ -3,7 +3,12 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
+import { buildShowDirectionsToolResult } from "@/lib/google-maps/show-directions-payload";
 import { buildShowMapToolResult } from "@/lib/google-maps/show-map-payload";
+import {
+  metadata as showDirectionsMetadata,
+  schema as showDirectionsSchema,
+} from "@/lib/mcp/show-directions-tool";
 import {
   metadata as showMapMetadata,
   schema as showMapSchema,
@@ -56,6 +61,12 @@ async function loadXmcpTools(): Promise<Record<string, XmcpToolEntry>> {
           _meta: toolUiMetaFor("show-map-at-coordinates"),
           execute: async () => ({}),
         },
+        "show-directions": {
+          description: showDirectionsMetadata.description,
+          inputSchema: z.object(showDirectionsSchema),
+          _meta: toolUiMetaFor("show-directions"),
+          execute: async () => ({}),
+        },
       };
     })();
   }
@@ -93,6 +104,7 @@ async function createMcpServer(): Promise<McpServer> {
         "Use search-place to find one place per page (TOON: id, name, lat, lng, pagination).",
         "Use get-place-detail with place.id for address, rating, phone, and website.",
         "Use show-map-at-coordinates with place.lat and place.lng to get mapUrl and the map widget.",
+        "Use show-directions with origin and destination lat/lng for an embedded route preview (mapUrl in TOON).",
       ].join(" "),
       capabilities: {
         tools: { listChanged: true },
@@ -162,6 +174,79 @@ async function createMcpServer(): Promise<McpServer> {
                   type: "text",
                   text: JSON.stringify(
                     { error: message, latitude, longitude },
+                    null,
+                    2,
+                  ),
+                },
+              ],
+              isError: true,
+            });
+          }
+        }
+        if (name === "show-directions") {
+          const originLatitude = Number(args.originLatitude);
+          const originLongitude = Number(args.originLongitude);
+          const destinationLatitude = Number(args.destinationLatitude);
+          const destinationLongitude = Number(args.destinationLongitude);
+          const coords = [
+            originLatitude,
+            originLongitude,
+            destinationLatitude,
+            destinationLongitude,
+          ];
+          if (!coords.every(Number.isFinite)) {
+            return normalizeToolResult({
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(
+                    {
+                      error:
+                        "originLatitude, originLongitude, destinationLatitude, and destinationLongitude are required.",
+                    },
+                    null,
+                    2,
+                  ),
+                },
+              ],
+              isError: true,
+            });
+          }
+          try {
+            const result = await buildShowDirectionsToolResult({
+              originLatitude,
+              originLongitude,
+              destinationLatitude,
+              destinationLongitude,
+              mode:
+                typeof args.mode === "string"
+                  ? (args.mode as
+                      | "driving"
+                      | "walking"
+                      | "bicycling"
+                      | "transit")
+                  : undefined,
+            });
+            const uiMeta = toolUiMetaFor("show-directions");
+            return normalizeToolResult({
+              ...result,
+              _meta: uiMeta,
+            });
+          } catch (err) {
+            const message =
+              err instanceof Error ? err.message : "Directions request failed.";
+            return normalizeToolResult({
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(
+                    {
+                      error: message,
+                      originLatitude,
+                      originLongitude,
+                      destinationLatitude,
+                      destinationLongitude,
+                    },
                     null,
                     2,
                   ),

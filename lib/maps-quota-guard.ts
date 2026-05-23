@@ -16,6 +16,9 @@ function serviceIdForMcpTool(tool: McpMapsTool): MapsServiceId {
   if (tool === "search-place" || tool === "get-place-detail") {
     return "places";
   }
+  if (tool === "show-map-at-coordinates" || tool === "show-directions") {
+    return "maps-embed";
+  }
   return "maps-embed";
 }
 

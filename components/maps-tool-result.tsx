@@ -49,11 +49,17 @@ function parseToolTextOutput(output: unknown): unknown {
   return output;
 }
 
-function MapEmbedPreview({ mapUrl }: { mapUrl: string }) {
+function MapEmbedPreview({
+  mapUrl,
+  title = "Map preview",
+}: {
+  mapUrl: string;
+  title?: string;
+}) {
   return (
     <iframe
       src={mapUrl}
-      title="Map preview"
+      title={title}
       width={640}
       height={400}
       loading="lazy"
@@ -75,10 +81,15 @@ export function MapsToolResult({ part }: { part: MapsToolPart }) {
     return null;
   }
 
-  if (toolName === "show-map-at-coordinates") {
+  if (toolName === "show-map-at-coordinates" || toolName === "show-directions") {
     const mapUrl = resolveMapUrl(part.output);
     if (mapUrl) {
-      return <MapEmbedPreview mapUrl={mapUrl} />;
+      return (
+        <MapEmbedPreview
+          mapUrl={mapUrl}
+          title={toolName === "show-directions" ? "Directions preview" : "Map preview"}
+        />
+      );
     }
   }
 

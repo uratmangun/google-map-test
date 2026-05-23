@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   areMessagesEqual,
   normalizeStoredMessages,
+  sanitizeMessagesForStorage,
   createThread,
   deriveTitleFromMessages,
   filterThreads,
@@ -332,7 +333,7 @@ export function HomePageClient() {
         return prev;
       }
 
-      const persistedMessages = normalizeStoredMessages(messages);
+      const persistedMessages = sanitizeMessagesForStorage(messages);
 
       const next = prev.map((t) =>
         t.id === threadId

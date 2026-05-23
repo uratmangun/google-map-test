@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+import { metadata as showDirectionsMetadata } from "@/lib/mcp/show-directions-tool";
 import { metadata as showMapMetadata } from "@/lib/mcp/show-map-tool";
 
 import { buildMcpAppWidgetHtml } from "./ui-widget-html";
@@ -18,13 +19,22 @@ export type UiWidgetRegistration = {
 };
 
 const SHOW_MAP_BUNDLE = "src_tools_show-map-at-coordinates_3c4ef7.bundle.js";
+/** Set after `xmcp build`; hash suffix matches dist/client output. */
+const SHOW_DIRECTIONS_BUNDLE =
+  "src_tools_show-directions_bdc805.bundle.js";
 
 export const UI_WIDGETS: UiWidgetRegistration[] = [
   {
     toolName: "show-map-at-coordinates",
     bundleFile: SHOW_MAP_BUNDLE,
-    description: "Static map widget for show-map-at-coordinates",
+    description: "Embedded map widget for show-map-at-coordinates",
     toolMetaSource: showMapMetadata._meta,
+  },
+  {
+    toolName: "show-directions",
+    bundleFile: SHOW_DIRECTIONS_BUNDLE,
+    description: "Embedded directions widget for show-directions",
+    toolMetaSource: showDirectionsMetadata._meta,
   },
 ];
 

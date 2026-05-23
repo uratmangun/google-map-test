@@ -11,8 +11,9 @@ Uses [xmcp](https://xmcp.dev/) with the [Next.js adapter](https://github.com/bas
 | `search-place` | Find one place per page (relevance order) | **TOON**: `place` (id, name, lat, lng) + `pagination` |
 | `get-place-detail` | Full details for a `place.id` from search | **TOON**: address, rating, phone, website, maps link |
 | `show-map-at-coordinates` | Embedded Google Map for lat/lng (ChatGPT Apps widget) | **TOON**: `mapUrl` + iframe widget in MCP Apps hosts |
+| `show-directions` | Embedded route preview from point A to point B | **TOON**: `mapUrl` (Maps Embed directions mode) + iframe widget |
 
-Typical flow: `search-place` → `get-place-detail` (optional) → `show-map-at-coordinates` with `place.lat` / `place.lng`.
+Typical flow: `search-place` → `get-place-detail` (optional) → `show-map-at-coordinates` with `place.lat` / `place.lng`, or `show-directions` with origin/destination coordinates when the user wants a route.
 
 Tool text uses [TOON](https://github.com/toon-format/toon) (`@toon-format/toon`) for token-efficient LLM input.
 

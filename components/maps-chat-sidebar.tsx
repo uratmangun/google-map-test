@@ -90,7 +90,7 @@ export function MapsChatSidebar({
             <ul className="flex flex-col gap-0.5">
               {visibleThreads.map((thread) => {
                 const isActive = thread.id === activeThreadId;
-                const userMessageCount = thread.messages.filter((m) => m.role === "user").length;
+                const messageCount = thread.messages.length;
                 return (
                   <li key={thread.id}>
                     <button
@@ -110,7 +110,7 @@ export function MapsChatSidebar({
                           isActive ? "text-[#5b8def]" : "text-[#94a3b8]",
                         )}
                       >
-                        {formatThreadMeta(thread.updatedAt, userMessageCount)}
+                        {formatThreadMeta(thread.updatedAt, messageCount)}
                       </span>
                     </button>
                   </li>

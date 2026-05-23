@@ -30,6 +30,7 @@ type SkuUsage = {
   skuKey: string;
   label: string;
   tier: string;
+  mcpTools?: string[];
   used: number;
   limit: number | null;
   remaining: number | null;
@@ -545,10 +546,15 @@ export function MapsQuotaDashboard() {
                             {definition.service}
                           </p>
                           <p className="text-[10px] text-[#64748b]">
-                            MCP tool:{" "}
-                            <code className="rounded bg-[#f1f5f9] px-1 py-0.5 text-[10px]">
-                              {definition.mcpTool}
-                            </code>
+                            MCP tools:{" "}
+                            {definition.mcpTools.map((tool) => (
+                              <code
+                                key={tool}
+                                className="mr-1 rounded bg-[#f1f5f9] px-1 py-0.5 text-[10px]"
+                              >
+                                {tool}
+                              </code>
+                            ))}
                           </p>
                           <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-[#64748b]">
                             {definition.tier}
@@ -610,6 +616,19 @@ export function MapsQuotaDashboard() {
                                       {sku.tier}
                                     </span>
                                   </div>
+                                  {sku.mcpTools && sku.mcpTools.length > 0 ? (
+                                    <p className="text-[10px] text-[#94a3b8]">
+                                      MCP:{" "}
+                                      {sku.mcpTools.map((tool) => (
+                                        <code
+                                          key={tool}
+                                          className="mr-1 rounded bg-[#f8fafc] px-1 py-px text-[9px] text-[#64748b]"
+                                        >
+                                          {tool}
+                                        </code>
+                                      ))}
+                                    </p>
+                                  ) : null}
                                   {sku.unlimited ? (
                                     <p className="text-[10px] text-emerald-700">
                                       Unlimited free tier
