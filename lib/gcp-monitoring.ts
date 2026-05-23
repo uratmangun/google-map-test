@@ -2,6 +2,7 @@ import {
   getConfig,
   getPacificMonthWindow,
   MAPS_SERVICES,
+  resolveFreeTierLimit,
   usageSummary,
   type MapsServiceId,
 } from "@/lib/maps-free-tier";
@@ -89,7 +90,9 @@ export function getMapsUsageMeta() {
       label: s.label,
       service: s.service,
       tier: s.tier,
-      limit: freeTierLimit,
+      category: s.category,
+      limit: resolveFreeTierLimit(s, freeTierLimit),
+      unlimited: s.freeTierLimit === null,
     })),
   };
 }
@@ -106,6 +109,8 @@ export async function fetchMapsServiceUsage(serviceId: MapsServiceId) {
     window.periodEnd,
   );
 
+  const limit = resolveFreeTierLimit(definition, freeTierLimit);
+
   return {
     ...getMapsUsageMeta(),
     service: {
@@ -113,7 +118,8 @@ export async function fetchMapsServiceUsage(serviceId: MapsServiceId) {
       label: definition.label,
       service: definition.service,
       tier: definition.tier,
-      ...usageSummary(used, freeTierLimit),
+      category: definition.category,
+      ...usageSummary(used, limit),
     },
   };
 }
@@ -129,12 +135,14 @@ export async function fetchMapsUsage() {
         meta.periodStart,
         meta.periodEnd,
       );
+      const limit = resolveFreeTierLimit(s, meta.freeTierLimit);
       return {
         id: s.id as MapsServiceId,
         label: s.label,
         service: s.service,
         tier: s.tier,
-        ...usageSummary(used, meta.freeTierLimit),
+        category: s.category,
+        ...usageSummary(used, limit),
       };
     }),
   );

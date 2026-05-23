@@ -55,7 +55,7 @@ fish scripts/google-maps-api-key.fish --project YOUR_PROJECT_ID
 
 The script will:
 
-- Enable Maps, Geocoding, and Places backends
+- Enable Maps Platform APIs (Maps, Routes, Places, Environment — see `lib/maps-free-tier.ts`)
 - Create a browser-restricted key (localhost only)
 - Write `GOOGLE_MAPS_API_KEY` and `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` to `.env.local` (gitignored)
 
@@ -88,7 +88,7 @@ gcloud auth application-default login
 3. Add to `.env.local`:
 
 ```env
-GCP_PROJECT_ID=koisose-65e33
+GCP_PROJECT_ID=coba-409011
 BETTER_AUTH_URL=http://localhost:3000
 BETTER_AUTH_SECRET=<openssl rand -base64 32>
 GOOGLE_CLIENT_ID=<oauth-client-id>
@@ -98,6 +98,18 @@ GOOGLE_CLIENT_SECRET=<oauth-client-secret>
 (`AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` still work as aliases.)
 
 Usage counts are loaded on demand per API card (Refresh). The server needs ADC + Monitoring IAM on the project.
+
+`GCP_PROJECT_ID` must be the same project as `GOOGLE_MAPS_API_KEY`. The Places card reads **`places.googleapis.com`** (Places API New), not legacy `places-backend.googleapis.com`.
+
+### APIs on `/maps-usage`
+
+The quota dashboard tracks **22** Google Maps Platform products with Essentials (or Pro) monthly free caps — grouped as Maps, Routes, Places & location, and Environment. Each card maps to a Cloud Monitoring `consumed_api` service name. Enable APIs in [Maps API list](https://console.cloud.google.com/google/maps-apis/api-list?project=coba-409011) or:
+
+```fish
+gcloud services enable places.googleapis.com routes.googleapis.com static-maps-backend.googleapis.com maps-embed-backend.googleapis.com roads.googleapis.com timezone-backend.googleapis.com tile.googleapis.com pollen.googleapis.com solar.googleapis.com weather.googleapis.com --project=coba-409011
+```
+
+Full list: `lib/maps-free-tier.ts`. [Pricing & free caps](https://developers.google.com/maps/billing-and-pricing/pricing).
 
 ## Troubleshooting
 
