@@ -3,25 +3,54 @@ import { z } from "zod";
 
 import { runPlaceSearchJson } from "@/lib/google-maps/search-place-result";
 
+const placeDetailSchema = z.object({
+  rank: z.number().describe("Relevance rank on this page (1 = best match)"),
+  id: z.string(),
+  name: z.string(),
+  address: z.string(),
+  latitude: z.number(),
+  longitude: z.number(),
+  rating: z.number().nullable(),
+  userRatingCount: z.number().nullable(),
+  website: z.string().nullable(),
+  phone: z.string().nullable(),
+  googleMapsUri: z.string().nullable().describe("Google Maps profile / place URL"),
+  businessStatus: z.string().nullable(),
+  primaryType: z.string().nullable(),
+  types: z.array(z.string()),
+});
+
 export const schema = {
   query: z
     .string()
     .min(1)
     .describe(
-      "What to find: landmark + city, business name, or street address (e.g. 'Eiffel Tower Paris', 'coffee in Bandung')",
+      "What to find: landmark, business, area, or list query (e.g. 'restaurants in Jakarta')",
+    ),
+  pageSize: z
+    .number()
+    .int()
+    .min(1)
+    .max(20)
+    .optional()
+    .describe("Places per page, 1–20 (default 3, sorted by relevance)."),
+  pageToken: z
+    .string()
+    .optional()
+    .describe(
+      "Pagination token from a prior response's nextPageToken. Use the same query as the first page.",
     ),
 };
 
 export const outputSchema = {
   query: z.string(),
+  pageSize: z.number(),
+  pageToken: z.string().optional(),
+  nextPageToken: z.string().optional(),
+  hasMore: z.boolean(),
+  sortedBy: z.literal("relevance"),
   summaryText: z.string(),
-  primary: z.object({
-    id: z.string(),
-    name: z.string(),
-    address: z.string(),
-    latitude: z.number(),
-    longitude: z.number(),
-  }),
+  primary: placeDetailSchema,
   map: z.object({
     center: z.object({
       latitude: z.number(),
@@ -29,21 +58,13 @@ export const outputSchema = {
     }),
     zoom: z.number(),
   }),
-  results: z.array(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      address: z.string(),
-      latitude: z.number(),
-      longitude: z.number(),
-    }),
-  ),
+  results: z.array(placeDetailSchema),
 };
 
 export const metadata: ToolMetadata = {
   name: "search-place",
   description:
-    "Find places by name or address. Returns coordinates, formatted addresses, alternate matches, and a map center for the top result. Use when the user asks where something is, needs lat/lng, or wants nearby place options.",
+    "Find places by text query (default 3 per page, relevance order). Returns rating, phone, website, Maps profile URL, and coordinates. Paginate with pageToken=nextPageToken. Use show-map-at-coordinates for a map image.",
   annotations: {
     title: "Find a place",
     readOnlyHint: true,
@@ -53,19 +74,20 @@ export const metadata: ToolMetadata = {
 
 export default async function searchPlace({
   query,
+  pageSize,
+  pageToken,
 }: InferSchema<typeof schema>) {
   try {
-    const payload = await runPlaceSearchJson(query.trim());
+    const payload = await runPlaceSearchJson(query.trim(), {
+      pageSize,
+      pageToken,
+    });
 
     return {
       content: [
         {
           type: "text" as const,
-          text: [
-            payload.summaryText,
-            "",
-            "Use structuredContent.primary for coordinates; structuredContent.results lists alternates.",
-          ].join("\n"),
+          text: JSON.stringify(payload, null, 2),
         },
       ],
       structuredContent: payload,
@@ -77,7 +99,7 @@ export default async function searchPlace({
       content: [
         {
           type: "text" as const,
-          text: `Could not find "${query}". ${message}`,
+          text: JSON.stringify({ error: message, query }, null, 2),
         },
       ],
       isError: true,

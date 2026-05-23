@@ -1,64 +1,72 @@
+import { toPlaceDetailJson, type PlaceDetailJson } from "./place-details";
 import {
+  DEFAULT_SEARCH_PAGE_SIZE,
   formatPlaceSummary,
   searchPlaces,
-  type PlaceResult,
+  type SearchPlacesOptions,
 } from "./places";
+
+export type { PlaceDetailJson };
 
 export type PlaceSearchJson = {
   query: string;
+  pageSize: number;
+  pageToken?: string;
+  nextPageToken?: string;
+  hasMore: boolean;
+  sortedBy: "relevance";
   summaryText: string;
-  primary: {
-    id: string;
-    name: string;
-    address: string;
-    latitude: number;
-    longitude: number;
-  };
+  primary: PlaceDetailJson;
   map: {
     center: { latitude: number; longitude: number };
     zoom: number;
   };
-  results: Array<{
-    id: string;
-    name: string;
-    address: string;
-    latitude: number;
-    longitude: number;
-  }>;
+  results: PlaceDetailJson[];
 };
-
-function toPrimary(place: PlaceResult) {
-  return {
-    id: place.id,
-    name: place.displayName,
-    address: place.formattedAddress,
-    latitude: place.latitude,
-    longitude: place.longitude,
-  };
-}
 
 export async function runPlaceSearchJson(
   query: string,
+  options: SearchPlacesOptions = {},
 ): Promise<PlaceSearchJson> {
-  const places = await searchPlaces(query);
-  const primary = places[0]!;
+  const pageSize = Math.min(
+    20,
+    Math.max(1, options.pageSize ?? DEFAULT_SEARCH_PAGE_SIZE),
+  );
+  const { places, nextPageToken } = await searchPlaces(query, {
+    ...options,
+    pageSize,
+  });
+  const results = places.map((place, i) => toPlaceDetailJson(place, i + 1));
+  const primary = results[0]!;
 
   const summaryLines = [
-    `Top result for "${query}":`,
-    formatPlaceSummary(primary, 0),
+    `Results for "${query}" (${results.length} on this page, sorted by relevance):`,
+    formatPlaceSummary(places[0]!, 0),
   ];
 
   if (places.length > 1) {
-    summaryLines.push("", "Other matches:");
+    summaryLines.push("", "Other matches on this page:");
     for (let i = 1; i < places.length; i++) {
       summaryLines.push(formatPlaceSummary(places[i]!, i));
     }
   }
 
+  if (nextPageToken) {
+    summaryLines.push(
+      "",
+      "More results: same query with pageToken=nextPageToken (3 places per page by default).",
+    );
+  }
+
   return {
     query,
+    pageSize,
+    sortedBy: "relevance",
+    ...(options.pageToken ? { pageToken: options.pageToken } : {}),
+    ...(nextPageToken ? { nextPageToken } : {}),
+    hasMore: Boolean(nextPageToken),
     summaryText: summaryLines.join("\n"),
-    primary: toPrimary(primary),
+    primary,
     map: {
       center: {
         latitude: primary.latitude,
@@ -66,6 +74,6 @@ export async function runPlaceSearchJson(
       },
       zoom: 15,
     },
-    results: places.map(toPrimary),
+    results,
   };
 }

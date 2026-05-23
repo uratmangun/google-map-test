@@ -8,7 +8,10 @@ Uses [xmcp](https://xmcp.dev/) with the [Next.js adapter](https://github.com/bas
 
 | Tool | Purpose | Output |
 |------|---------|--------|
-| `search-place` | Find places by name or address | **Text summary** + **structured JSON** (coordinates, matches, map center) |
+| `search-place` | Find places (default **3**/page, relevance order; rating, website, phone, Maps URL) | **JSON** (`results`, `nextPageToken`, `hasMore`) |
+| `show-map-at-coordinates` | Static map image for lat/lng | **PNG image** + **JSON** metadata (use after `search-place`) |
+
+Typical flow: `search-place` → read `primary.latitude` / `primary.longitude` → `show-map-at-coordinates`.
 
 ## Setup
 

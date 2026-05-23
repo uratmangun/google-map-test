@@ -20,9 +20,23 @@ import { authClient } from "@/lib/auth-client";
 import {
   getServicesByCategory,
   MAPS_SERVICES,
+  type MapsServiceCategory,
   type MapsServiceId,
 } from "@/lib/maps-free-tier";
 import { cn } from "@/lib/utils";
+
+type SkuUsage = {
+  skuKey: string;
+  label: string;
+  tier: string;
+  used: number;
+  limit: number | null;
+  remaining: number | null;
+  percentUsed: number;
+  unlimited?: boolean;
+  atLimit: boolean;
+  estimatedOverageUsd: number;
+};
 
 type ServiceUsage = {
   id: string;
@@ -34,6 +48,16 @@ type ServiceUsage = {
   remaining: number | null;
   percentUsed: number;
   unlimited?: boolean;
+  apiRequestCount?: number;
+  skus?: SkuUsage[];
+  estimatedOverageUsd?: number;
+};
+
+type CategoryBillingEstimate = {
+  category: MapsServiceCategory;
+  periodLabel: string;
+  estimatedOverageUsd: number;
+  note: string;
 };
 
 type UsageMetaResponse = {
@@ -87,6 +111,33 @@ function formatNumber(n: number) {
   return new Intl.NumberFormat("en-US").format(n);
 }
 
+function formatUsd(n: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(n);
+}
+
+type CategoryBillingState = {
+  loading: boolean;
+  error: string | null;
+  data: CategoryBillingEstimate | null;
+};
+
+function initialCategoryBilling(): Record<
+  MapsServiceCategory,
+  CategoryBillingState
+> {
+  return {
+    maps: { loading: false, error: null, data: null },
+    routes: { loading: false, error: null, data: null },
+    places: { loading: false, error: null, data: null },
+    environment: { loading: false, error: null, data: null },
+  };
+}
+
 function matchesApiSearch(
   definition: { label: string; service: string; id: string },
   query: string,
@@ -121,6 +172,9 @@ export function MapsQuotaDashboard() {
   const [needsLogin, setNeedsLogin] = useState(false);
   const [globalNeedsGcp, setGlobalNeedsGcp] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [categoryBilling, setCategoryBilling] = useState(
+    initialCategoryBilling,
+  );
 
   const filteredGroups = useMemo(() => {
     return getServicesByCategory()
@@ -175,6 +229,53 @@ export function MapsQuotaDashboard() {
       setMetaLoading(false);
     }
   }, [signedIn]);
+
+  const refreshCategoryBilling = useCallback(
+    async (category: MapsServiceCategory) => {
+      setCategoryBilling((prev) => ({
+        ...prev,
+        [category]: { ...prev[category], loading: true, error: null },
+      }));
+
+      try {
+        const res = await fetch(
+          `/api/maps/billing?category=${encodeURIComponent(category)}`,
+        );
+        const json = (await res.json()) as CategoryBillingEstimate & {
+          error?: string;
+          needsAuth?: boolean;
+        };
+
+        if (!res.ok) {
+          setCategoryBilling((prev) => ({
+            ...prev,
+            [category]: {
+              loading: false,
+              error: json.error ?? "Failed to load billing estimate",
+              data: null,
+            },
+          }));
+          if (json.needsAuth) setGlobalNeedsGcp(true);
+          return;
+        }
+
+        setCategoryBilling((prev) => ({
+          ...prev,
+          [category]: { loading: false, error: null, data: json },
+        }));
+      } catch (e) {
+        setCategoryBilling((prev) => ({
+          ...prev,
+          [category]: {
+            loading: false,
+            error: e instanceof Error ? e.message : "Failed to load estimate",
+            data: null,
+          },
+        }));
+      }
+    },
+    [],
+  );
 
   const refreshService = useCallback(
     async (serviceId: MapsServiceId) => {
@@ -334,9 +435,9 @@ export function MapsQuotaDashboard() {
           <p className="text-sm font-semibold text-[#92400e]">Estimated usage</p>
           <p className="text-[13px] leading-relaxed text-[#a16207]">
             Click Refresh on a card to load counts from Cloud Monitoring.
-            Per-SKU free caps from Google pricing (often 10,000/month Essentials;
-            some 5,000 or 100,000; Embed/SDK unlimited). Billing resets monthly in
-            Pacific time.
+            Refresh a card for API + per-SKU free-tier usage (Monitoring counts
+            are per API hostname, shared across SKUs). Use section &ldquo;Refresh
+            billing est.&rdquo; for worst-case overage $ (not official invoice).
           </p>
         </div>
       </div>
@@ -378,11 +479,42 @@ export function MapsQuotaDashboard() {
             </p>
           ) : null}
 
-          {filteredGroups.map((group) => (
+          {filteredGroups.map((group) => {
+            const billing = categoryBilling[group.category];
+            return (
             <section key={group.category} className="space-y-4">
-              <h2 className="text-lg font-semibold text-[#0f172a]">
-                {group.label}
-              </h2>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold text-[#0f172a]">
+                  {group.label}
+                </h2>
+                <div className="flex flex-wrap items-center gap-2">
+                  {billing.data ? (
+                    <span className="text-[13px] text-[#64748b]">
+                      Est. overage:{" "}
+                      <span className="font-semibold text-[#0f172a]">
+                        {formatUsd(billing.data.estimatedOverageUsd)}
+                      </span>
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => void refreshCategoryBilling(group.category)}
+                    disabled={billing.loading}
+                    className="inline-flex items-center gap-1 rounded-lg bg-[#f1f5f9] px-2.5 py-1.5 text-[12px] font-medium text-[#334155] transition hover:bg-[#e2e8f0] disabled:opacity-50"
+                  >
+                    <RefreshCwIcon
+                      className={cn(
+                        "size-3",
+                        billing.loading && "animate-spin",
+                      )}
+                    />
+                    Refresh billing est.
+                  </button>
+                </div>
+              </div>
+              {billing.error ? (
+                <p className="text-[12px] text-red-700">{billing.error}</p>
+              ) : null}
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {group.services.map((definition) => {
                   const state = cardUsage[definition.id];
@@ -443,54 +575,71 @@ export function MapsQuotaDashboard() {
                       ) : null}
 
                       {hasUsage ? (
-                        isUnlimited || usage.unlimited ? (
-                          <div className="space-y-2 py-2">
-                            <p className="text-center text-sm font-semibold tabular-nums text-[#0f172a]">
-                              {formatNumber(usage.used)} requests
-                            </p>
+                        <div className="space-y-3">
+                          <p className="text-[11px] text-[#64748b]">
+                            API requests (Monitoring):{" "}
+                            <span className="font-semibold tabular-nums text-[#0f172a]">
+                              {formatNumber(
+                                usage.apiRequestCount ?? usage.used,
+                              )}
+                            </span>
+                            {usage.estimatedOverageUsd != null &&
+                            usage.estimatedOverageUsd > 0 ? (
+                              <span className="text-amber-700">
+                                {" "}
+                                · est. overage {formatUsd(usage.estimatedOverageUsd)}
+                              </span>
+                            ) : null}
+                          </p>
+                          {usage.skus && usage.skus.length > 0 ? (
+                            <ul className="space-y-2.5 border-t border-[#f1f5f9] pt-2">
+                              {usage.skus.map((sku) => (
+                                <li key={sku.skuKey} className="space-y-1">
+                                  <div className="flex items-start justify-between gap-1">
+                                    <p className="text-[11px] font-medium leading-snug text-[#334155]">
+                                      {sku.label}
+                                    </p>
+                                    <span className="shrink-0 text-[9px] font-medium uppercase text-[#94a3b8]">
+                                      {sku.tier}
+                                    </span>
+                                  </div>
+                                  {sku.unlimited ? (
+                                    <p className="text-[10px] text-emerald-700">
+                                      Unlimited free tier
+                                    </p>
+                                  ) : (
+                                    <>
+                                      <UsageBar percent={sku.percentUsed} />
+                                      <p
+                                        className={cn(
+                                          "text-[10px] tabular-nums",
+                                          sku.atLimit
+                                            ? "font-semibold text-red-700"
+                                            : "text-[#64748b]",
+                                        )}
+                                      >
+                                        {formatNumber(sku.used)} /{" "}
+                                        {formatNumber(sku.limit ?? 0)} free
+                                        {sku.atLimit ? " · AT LIMIT" : ""}
+                                      </p>
+                                    </>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : isUnlimited || usage.unlimited ? (
                             <p className="text-center text-[11px] text-emerald-700">
-                              Essentials: unlimited free usage
+                              Unlimited free usage
                             </p>
-                          </div>
-                        ) : (
-                          <>
-                            <UsageBar percent={usage.percentUsed} />
-                            <div className="grid grid-cols-3 gap-2 text-center">
-                              <div className="rounded-lg bg-[#f8fafc] px-2 py-2.5">
-                                <p className="text-[11px] text-[#64748b]">
-                                  Used
-                                </p>
-                                <p className="text-sm font-semibold tabular-nums text-[#0f172a]">
-                                  {formatNumber(usage.used)}
-                                </p>
-                              </div>
-                              <div className="rounded-lg bg-[#ecfdf5] px-2 py-2.5">
-                                <p className="text-[11px] text-emerald-800/80">
-                                  Left
-                                </p>
-                                <p className="text-sm font-semibold tabular-nums text-[#15803d]">
-                                  {formatNumber(usage.remaining ?? 0)}
-                                </p>
-                              </div>
-                              <div className="rounded-lg bg-[#f8fafc] px-2 py-2.5">
-                                <p className="text-[11px] text-[#64748b]">
-                                  Limit
-                                </p>
-                                <p className="text-sm font-semibold tabular-nums text-[#0f172a]">
-                                  {limit != null
-                                    ? formatNumber(limit)
-                                    : "—"}
-                                </p>
-                              </div>
-                            </div>
-                            <p className="text-center text-[11px] text-[#94a3b8]">
-                              {usage.percentUsed > 0 && usage.percentUsed < 1
-                                ? "< 1"
-                                : usage.percentUsed.toFixed(1)}
-                              % of free tier
-                            </p>
-                          </>
-                        )
+                          ) : (
+                            <>
+                              <UsageBar percent={usage.percentUsed} />
+                              <p className="text-center text-[11px] text-[#94a3b8]">
+                                {usage.percentUsed.toFixed(1)}% of API free tier
+                              </p>
+                            </>
+                          )}
+                        </div>
                       ) : (
                         <p className="py-6 text-center text-[13px] text-[#94a3b8]">
                           {state.loading
@@ -505,7 +654,8 @@ export function MapsQuotaDashboard() {
                 })}
               </div>
             </section>
-          ))}
+            );
+          })}
         </div>
       )}
 

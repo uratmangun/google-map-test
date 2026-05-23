@@ -6,6 +6,10 @@ import {
   usageSummary,
   type MapsServiceId,
 } from "@/lib/maps-free-tier";
+import {
+  SKUS_BY_SERVICE_ID,
+  skuUsageFromApiRequests,
+} from "@/lib/maps-skus";
 import { monitoringFetch } from "@/lib/gcp-auth";
 
 type TimeSeriesPoint = {
@@ -110,6 +114,13 @@ export async function fetchMapsServiceUsage(serviceId: MapsServiceId) {
   );
 
   const limit = resolveFreeTierLimit(definition, freeTierLimit);
+  const skus = SKUS_BY_SERVICE_ID[definition.id].map((sku) =>
+    skuUsageFromApiRequests(used, sku),
+  );
+  const estimatedOverageUsd = Math.max(
+    0,
+    ...skus.map((s) => s.estimatedOverageUsd),
+  );
 
   return {
     ...getMapsUsageMeta(),
@@ -119,6 +130,9 @@ export async function fetchMapsServiceUsage(serviceId: MapsServiceId) {
       service: definition.service,
       tier: definition.tier,
       category: definition.category,
+      apiRequestCount: used,
+      skus,
+      estimatedOverageUsd: Math.round(estimatedOverageUsd * 100) / 100,
       ...usageSummary(used, limit),
     },
   };
