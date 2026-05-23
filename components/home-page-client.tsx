@@ -419,15 +419,6 @@ export function HomePageClient() {
             >
               Usage dashboard
             </Link>
-            <Link
-              href="/maps-usage/alerts"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                "h-8 rounded-lg border-[#e2e8f0] bg-white text-[12px] text-[#334155]",
-              )}
-            >
-              Quota alerts
-            </Link>
             {signedIn ? (
               <Button
                 type="button"

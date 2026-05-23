@@ -63,12 +63,11 @@ The script will:
 
 After you run `gcloud auth login`, reply in chat (e.g. “logged in”) and the agent can run the script for you.
 
-## 5. Quota dashboard and alerts
+## 5. Quota dashboard
 
 | Page | URL | Auth |
 |------|-----|------|
-| Usage (public) | `/maps-usage` | None |
-| Create alerts | `/maps-usage/alerts` | Google sign-in |
+| Usage | `/maps-usage` | Google sign-in |
 
 Design mock: `designs/quota.pen` / `designs/quota.png`.
 
@@ -76,13 +75,13 @@ Design mock: `designs/quota.pen` / `designs/quota.png`.
 pnpm dev
 ```
 
-### Server GCP (usage + creating policies)
+### Server GCP (usage counts)
 
 ```fish
 gcloud auth application-default login
 ```
 
-### Google sign-in (alert page only)
+### Google sign-in
 
 1. [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials) → **Create OAuth client ID** (Web).
 2. Authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
@@ -98,7 +97,7 @@ GOOGLE_CLIENT_SECRET=<oauth-client-secret>
 
 (`AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` still work as aliases.)
 
-Creating an alert uses the **signed-in Google email** for Monitoring notification channels. The server still needs ADC + Monitoring IAM on the project.
+Usage counts are loaded on demand per API card (Refresh). The server needs ADC + Monitoring IAM on the project.
 
 ## Troubleshooting
 

@@ -1,12 +1,10 @@
 "use client";
 
 /**
- * Public usage dashboard — designs/quota.pen (alert setup is on /maps-usage/alerts).
+ * Public usage dashboard — designs/quota.pen
  */
 import {
   AlertTriangleIcon,
-  BellIcon,
-  CheckCircle2Icon,
   ExternalLinkIcon,
   Loader2Icon,
   RefreshCwIcon,
@@ -17,6 +15,7 @@ import { useCallback, useEffect, useState } from "react";
 import { MapsAuthSignIn } from "@/components/maps-auth-sign-in";
 import { LightCard } from "@/components/maps-quota-light-card";
 import { authClient } from "@/lib/auth-client";
+import { MAPS_SERVICES, type MapsServiceId } from "@/lib/maps-free-tier";
 import { cn } from "@/lib/utils";
 
 type ServiceUsage = {
@@ -30,21 +29,33 @@ type ServiceUsage = {
   percentUsed: number;
 };
 
-type UsageResponse = {
+type UsageMetaResponse = {
   projectId: string;
   estimated: boolean;
   periodStart: string;
   periodEnd: string;
   periodLabel: string;
   freeTierLimit: number;
-  services: ServiceUsage[];
+  services: Array<{
+    id: string;
+    label: string;
+    service: string;
+    tier: string;
+    limit: number;
+  }>;
   error?: string;
   needsAuth?: boolean;
 };
 
-type AlertsResponse = {
-  configured: boolean;
-  notificationEmail: string;
+type ServiceUsageResponse = UsageMetaResponse & {
+  service: ServiceUsage;
+};
+
+type CardUsageState = {
+  loading: boolean;
+  error: string | null;
+  needsAuth: boolean;
+  data: ServiceUsage | null;
 };
 
 function UsageBar({ percent }: { percent: number }) {
@@ -68,72 +79,142 @@ function formatNumber(n: number) {
   return new Intl.NumberFormat("en-US").format(n);
 }
 
+function initialCardState(): Record<MapsServiceId, CardUsageState> {
+  return Object.fromEntries(
+    MAPS_SERVICES.map((s) => [
+      s.id,
+      { loading: false, error: null, needsAuth: false, data: null },
+    ]),
+  ) as Record<MapsServiceId, CardUsageState>;
+}
+
 export function MapsQuotaDashboard() {
   const { data: session, isPending: sessionPending } = authClient.useSession();
   const signedIn = Boolean(session?.user);
 
-  const [usage, setUsage] = useState<UsageResponse | null>(null);
-  const [alerts, setAlerts] = useState<AlertsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [meta, setMeta] = useState<UsageMetaResponse | null>(null);
+  const [cardUsage, setCardUsage] =
+    useState<Record<MapsServiceId, CardUsageState>>(initialCardState);
+  const [metaLoading, setMetaLoading] = useState(true);
+  const [metaError, setMetaError] = useState<string | null>(null);
   const [needsLogin, setNeedsLogin] = useState(false);
+  const [globalNeedsGcp, setGlobalNeedsGcp] = useState(false);
 
-  const load = useCallback(async () => {
+  const loadMeta = useCallback(async () => {
     if (!signedIn) {
-      setLoading(false);
+      setMetaLoading(false);
       setNeedsLogin(true);
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    setMetaLoading(true);
+    setMetaError(null);
     setNeedsLogin(false);
+    setGlobalNeedsGcp(false);
     try {
-      const [usageRes, alertsRes] = await Promise.all([
-        fetch("/api/maps/usage"),
-        fetch("/api/maps/alerts"),
-      ]);
-      const usageJson = (await usageRes.json()) as UsageResponse & {
-        needsLogin?: boolean;
-      };
-      const alertsJson = (await alertsRes.json()) as AlertsResponse & {
-        error?: string;
-        needsAuth?: boolean;
+      const usageRes = await fetch("/api/maps/usage");
+      const usageJson = (await usageRes.json()) as UsageMetaResponse & {
         needsLogin?: boolean;
       };
 
       if (usageRes.status === 401 && usageJson.needsLogin) {
         setNeedsLogin(true);
-        setUsage(null);
-        setAlerts(null);
+        setMeta(null);
         return;
       }
 
       if (!usageRes.ok) {
-        setError(usageJson.error ?? "Failed to load usage");
-        setUsage(usageJson.needsAuth ? usageJson : null);
+        setMetaError(usageJson.error ?? "Failed to load dashboard");
+        setMeta(usageJson.needsAuth ? usageJson : null);
+        setGlobalNeedsGcp(Boolean(usageJson.needsAuth));
       } else {
-        setUsage(usageJson);
-      }
-
-      if (alertsRes.ok) {
-        setAlerts(alertsJson);
+        setMeta(usageJson);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load data");
+      setMetaError(e instanceof Error ? e.message : "Failed to load data");
     } finally {
-      setLoading(false);
+      setMetaLoading(false);
     }
   }, [signedIn]);
 
+  const refreshService = useCallback(
+    async (serviceId: MapsServiceId) => {
+      setCardUsage((prev) => ({
+        ...prev,
+        [serviceId]: {
+          ...prev[serviceId],
+          loading: true,
+          error: null,
+          needsAuth: false,
+        },
+      }));
+
+      try {
+        const res = await fetch(
+          `/api/maps/usage?service=${encodeURIComponent(serviceId)}`,
+        );
+        const json = (await res.json()) as ServiceUsageResponse & {
+          needsLogin?: boolean;
+          needsAuth?: boolean;
+        };
+
+        if (res.status === 401 && json.needsLogin) {
+          setNeedsLogin(true);
+          return;
+        }
+
+        if (!res.ok) {
+          setCardUsage((prev) => ({
+            ...prev,
+            [serviceId]: {
+              loading: false,
+              error: json.error ?? "Failed to load usage",
+              needsAuth: Boolean(json.needsAuth),
+              data: null,
+            },
+          }));
+          if (json.needsAuth) {
+            setGlobalNeedsGcp(true);
+          }
+          return;
+        }
+
+        setMeta((prev) => ({
+          ...json,
+          services: prev?.services ?? json.services,
+        }));
+        setCardUsage((prev) => ({
+          ...prev,
+          [serviceId]: {
+            loading: false,
+            error: null,
+            needsAuth: false,
+            data: json.service,
+          },
+        }));
+      } catch (e) {
+        setCardUsage((prev) => ({
+          ...prev,
+          [serviceId]: {
+            loading: false,
+            error: e instanceof Error ? e.message : "Failed to load usage",
+            needsAuth: false,
+            data: null,
+          },
+        }));
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     if (sessionPending) return;
-    void load();
-  }, [load, sessionPending]);
+    void loadMeta();
+  }, [loadMeta, sessionPending]);
 
-  const needsGcp = usage?.needsAuth;
-  const projectId = usage?.projectId ?? "koisose-65e33";
-  const periodLabel = usage?.periodLabel ?? "";
+  const projectId = meta?.projectId ?? "koisose-65e33";
+  const periodLabel = meta?.periodLabel ?? "";
+  const freeTierLimit = meta?.freeTierLimit ?? 10_000;
   const consoleUrl = `https://console.cloud.google.com/google/maps-apis/metrics?project=${projectId}`;
 
   if (sessionPending) {
@@ -157,7 +238,7 @@ export function MapsQuotaDashboard() {
         </header>
         <MapsAuthSignIn
           title="Sign in to view usage"
-          description="Google sign-in is required to load Maps API usage and alert status from the server."
+          description="Google sign-in is required to load Maps API usage from the server."
           callbackURL="/maps-usage"
         />
       </div>
@@ -181,30 +262,15 @@ export function MapsQuotaDashboard() {
             {periodLabel ? ` · ${periodLabel}` : null}
           </p>
         </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => void load()}
-            disabled={loading}
-            className="rounded-lg bg-white px-3.5 py-2 text-[13px] font-medium text-[#334155] shadow-sm transition hover:bg-[#f8fafc] disabled:opacity-50"
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <RefreshCwIcon
-                className={cn("size-3.5", loading && "animate-spin")}
-              />
-              Refresh
-            </span>
-          </button>
-          <Link
-            href="/"
-            className="rounded-lg bg-white px-3.5 py-2 text-[13px] font-medium text-[#334155] shadow-sm transition hover:bg-[#f8fafc]"
-          >
-            Home
-          </Link>
-        </div>
+        <Link
+          href="/"
+          className="rounded-lg bg-white px-3.5 py-2 text-[13px] font-medium text-[#334155] shadow-sm transition hover:bg-[#f8fafc]"
+        >
+          Home
+        </Link>
       </header>
 
-      {needsGcp ? (
+      {globalNeedsGcp ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           <p className="font-semibold">GCP credentials required</p>
           <p className="mt-1 text-red-700/90">
@@ -212,14 +278,14 @@ export function MapsQuotaDashboard() {
             <code className="rounded bg-white/80 px-1 py-0.5 text-xs">
               gcloud auth application-default login
             </code>{" "}
-            on the server, then refresh.
+            on the server, then use Refresh on a card.
           </p>
         </div>
       ) : null}
 
-      {error ? (
+      {metaError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {error}
+          {metaError}
         </div>
       ) : null}
 
@@ -228,85 +294,93 @@ export function MapsQuotaDashboard() {
         <div className="space-y-1">
           <p className="text-sm font-semibold text-[#92400e]">Estimated usage</p>
           <p className="text-[13px] leading-relaxed text-[#a16207]">
-            Counts from Cloud Monitoring. Essentials tier default 10,000
-            requests/month per API. Billing resets monthly in Pacific time.
+            Click Refresh on a card to load counts from Cloud Monitoring.
+            Essentials tier default {formatNumber(freeTierLimit)} requests/month
+            per API. Billing resets monthly in Pacific time.
           </p>
         </div>
       </div>
 
-      {/* Public summary — full setup on /maps-usage/alerts (Google sign-in) */}
-      <LightCard className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <BellIcon className="size-4 text-[#1a73e8]" />
-            <h2 className="text-base font-semibold text-[#0f172a]">Quota alert</h2>
-            {alerts?.configured ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800">
-                <CheckCircle2Icon className="size-3" />
-                Active
-              </span>
-            ) : (
-              <span className="rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[11px] font-medium text-[#475569]">
-                Not configured
-              </span>
-            )}
-          </div>
-          <p className="text-[13px] text-[#64748b]">
-            Email alerts at 80% of free tier. Sign in with Google to create alerts
-            for your account.
-          </p>
-        </div>
-        <Link
-          href="/maps-usage/alerts"
-          className="inline-flex shrink-0 items-center justify-center rounded-lg bg-[#1a73e8] px-[18px] py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#1557b0]"
-        >
-          Set up alerts
-        </Link>
-      </LightCard>
-
-      {loading && !usage ? (
+      {metaLoading ? (
         <div className="flex justify-center py-16">
           <Loader2Icon className="size-8 animate-spin text-[#1a73e8]" />
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-3">
-          {(usage?.services ?? []).map((s) => (
-            <LightCard key={s.id} className="flex flex-col gap-3">
-              <div>
-                <h3 className="text-base font-semibold text-[#0f172a]">
-                  {s.label}
-                </h3>
-                <p className="text-[11px] text-[#94a3b8]">{s.service}</p>
-              </div>
-              <UsageBar percent={s.percentUsed} />
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-lg bg-[#f8fafc] px-2 py-2.5">
-                  <p className="text-[11px] text-[#64748b]">Used</p>
-                  <p className="text-sm font-semibold tabular-nums text-[#0f172a]">
-                    {formatNumber(s.used)}
-                  </p>
+          {MAPS_SERVICES.map((definition) => {
+            const state = cardUsage[definition.id];
+            const usage = state.data;
+            const limit = usage?.limit ?? freeTierLimit;
+            const hasUsage = usage !== null;
+
+            return (
+              <LightCard key={definition.id} className="flex flex-col gap-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-base font-semibold text-[#0f172a]">
+                      {definition.label}
+                    </h3>
+                    <p className="text-[11px] text-[#94a3b8]">
+                      {definition.service}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void refreshService(definition.id)}
+                    disabled={state.loading}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#f1f5f9] px-2.5 py-1.5 text-[12px] font-medium text-[#334155] transition hover:bg-[#e2e8f0] disabled:opacity-50"
+                  >
+                    <RefreshCwIcon
+                      className={cn("size-3", state.loading && "animate-spin")}
+                    />
+                    Refresh
+                  </button>
                 </div>
-                <div className="rounded-lg bg-[#ecfdf5] px-2 py-2.5">
-                  <p className="text-[11px] text-emerald-800/80">Left</p>
-                  <p className="text-sm font-semibold tabular-nums text-[#15803d]">
-                    {formatNumber(s.remaining)}
+
+                {state.error ? (
+                  <p className="text-[12px] text-red-700">{state.error}</p>
+                ) : null}
+
+                {hasUsage ? (
+                  <>
+                    <UsageBar percent={usage.percentUsed} />
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="rounded-lg bg-[#f8fafc] px-2 py-2.5">
+                        <p className="text-[11px] text-[#64748b]">Used</p>
+                        <p className="text-sm font-semibold tabular-nums text-[#0f172a]">
+                          {formatNumber(usage.used)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-[#ecfdf5] px-2 py-2.5">
+                        <p className="text-[11px] text-emerald-800/80">Left</p>
+                        <p className="text-sm font-semibold tabular-nums text-[#15803d]">
+                          {formatNumber(usage.remaining)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-[#f8fafc] px-2 py-2.5">
+                        <p className="text-[11px] text-[#64748b]">Limit</p>
+                        <p className="text-sm font-semibold tabular-nums text-[#0f172a]">
+                          {formatNumber(limit)}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-center text-[11px] text-[#94a3b8]">
+                      {usage.percentUsed > 0 && usage.percentUsed < 1
+                        ? "< 1"
+                        : usage.percentUsed.toFixed(1)}
+                      % of free tier
+                    </p>
+                  </>
+                ) : (
+                  <p className="py-6 text-center text-[13px] text-[#94a3b8]">
+                    {state.loading
+                      ? "Loading usage…"
+                      : `Limit ${formatNumber(limit)} / month · Refresh to load used & left`}
                   </p>
-                </div>
-                <div className="rounded-lg bg-[#f8fafc] px-2 py-2.5">
-                  <p className="text-[11px] text-[#64748b]">Limit</p>
-                  <p className="text-sm font-semibold tabular-nums text-[#0f172a]">
-                    {formatNumber(s.limit)}
-                  </p>
-                </div>
-              </div>
-              <p className="text-center text-[11px] text-[#94a3b8]">
-                {s.percentUsed > 0 && s.percentUsed < 1
-                  ? "< 1"
-                  : s.percentUsed.toFixed(1)}
-                % of free tier
-              </p>
-            </LightCard>
-          ))}
+                )}
+              </LightCard>
+            );
+          })}
         </div>
       )}
 

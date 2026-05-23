@@ -21,32 +21,16 @@ export const MAPS_SERVICES = [
 
 export type MapsServiceId = (typeof MAPS_SERVICES)[number]["id"];
 
-export const ALERT_POLICY_DISPLAY_NAME = "google-map-test-free-tier-80pct";
-export const ALERT_POLICY_NAME_PREFIX = "google-map-test-";
-
 export function getConfig() {
   const projectId =
     process.env.GCP_PROJECT_ID?.trim() || "koisose-65e33";
-  const alertEmail =
-    process.env.MAPS_ALERT_EMAIL?.trim() ;
   const freeTierLimit = Number(
     process.env.MAPS_FREE_TIER_ESSENTIALS_LIMIT ?? "10000",
-  );
-  const alertThresholdPct = Number(
-    process.env.MAPS_ALERT_THRESHOLD_PCT ?? "80",
   );
 
   return {
     projectId,
-    alertEmail,
     freeTierLimit: Number.isFinite(freeTierLimit) ? freeTierLimit : 10000,
-    alertThresholdPct: Number.isFinite(alertThresholdPct)
-      ? alertThresholdPct
-      : 80,
-    alertThreshold: Math.floor(
-      (Number.isFinite(freeTierLimit) ? freeTierLimit : 10000) *
-        ((Number.isFinite(alertThresholdPct) ? alertThresholdPct : 80) / 100),
-    ),
   };
 }
 
