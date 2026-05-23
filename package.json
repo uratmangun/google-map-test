@@ -29,9 +29,12 @@
     "@streamdown/math": "^1.0.2",
     "@streamdown/mermaid": "^1.0.2",
     "ai": "^6.0.158",
+    "better-auth": "^1.6.11",
+    "better-sqlite3": "^12.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "google-auth-library": "^10.6.2",
     "lucide-react": "^1.8.0",
     "nanoid": "^5.1.7",
     "next": "^16.2.3",
@@ -46,6 +49,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -53,5 +57,10 @@
     "eslint-config-next": "^16.2.3",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
   }
 }

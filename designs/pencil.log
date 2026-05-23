@@ -1,0 +1,35 @@
+
+[33m  ╭──────────────────────────────────────────╮[39m
+[33m  │                                          │[39m
+[33m  │[39m  Update available: [2m0.2.5[22m → [32m[1m0.2.6[22m[39m         [33m│[39m
+[33m  │[39m  Run [36mnpm i -g @pencil.dev/cli[39m to update  [33m│[39m
+[33m  │                                          │[39m
+[33m  ╰──────────────────────────────────────────╯[39m
+
+[INFO] Pencil CLI starting...
+[INFO] Input: (empty canvas)
+[INFO] Output: /home/uratmangun/CascadeProjects/google-map-test/designs/quota.pen
+[INFO] Model: claude-opus-4-6
+[INFO] Initializing IPC server
+[INFO] addResource: /home/uratmangun/CascadeProjects/google-map-test/designs/quota.pen
+[INFO] Initializing editor...
+[INFO] WebSocket server listening on port 41003
+[INFO] WebSocket server ready on port 41003
+[INFO] Running agent with prompt: Google Maps API quota dashboard, light theme: show free tier usage remaining per API (Maps, Geocoding, Places), progress bars, estimated disclaimer, alert status configured or not, Create alert button, link to GCP console
+[INFO] [IPC] invokeAgent with conversationId: conv-1779496422718-1b06v2h, sessionId: undefined
+[INFO] Starting Claude Agent session: conv-1779496422718-1b06v2h
+[WARN] Cannot resume, session id does not exist: conv-1779496422718-1b06v2h
+[INFO] New MCP client connected with ID: 71b31adf-16b6-4241-be20-cab4bf8f90fb
+
+🤖 Agent: API Error: Unable to connect to API (ConnectionRefused)
+[INFO] MCP client disconnected: 71b31adf-16b6-4241-be20-cab4bf8f90fb
+[ERROR] Error executing Claude Agent: Claude Code returned an error result: API Error: Unable to connect to API (ConnectionRefused)
+
+❌ Agent failed: unknown
+
+❌ Agent failed, error details: Error: unknown
+Trace
+    at dF (/home/uratmangun/.local/share/fnm/node-versions/v22.12.0/installation/lib/node_modules/@pencil.dev/cli/dist/index.cjs:8:1196295)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async _F (/home/uratmangun/.local/share/fnm/node-versions/v22.12.0/installation/lib/node_modules/@pencil.dev/cli/dist/index.cjs:8:1203167)
+[INFO] removeResource: /home/uratmangun/CascadeProjects/google-map-test/designs/quota.pen

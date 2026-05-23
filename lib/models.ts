@@ -56,27 +56,6 @@ function inferProvider(modelId: string) {
   return { provider: "openai", providerLabel: "OpenAI-compatible" };
 }
 
-function humanizeModelName(modelId: string) {
-  return (
-    modelId
-      .split(/[/:]/)
-      .pop()
-      ?.split("-")
-      .map((part) => {
-        if (/^\d+(?:\.\d+)?$/.test(part)) {
-          return part;
-        }
-
-        if (part.length <= 3) {
-          return part.toUpperCase();
-        }
-
-        return part.charAt(0).toUpperCase() + part.slice(1);
-      })
-      .join(" ") || modelId
-  );
-}
-
 export function normalizeModel(model: ProxyModel): UiModel | null {
   const id = model.id?.trim();
 
@@ -89,7 +68,8 @@ export function normalizeModel(model: ProxyModel): UiModel | null {
 
   return {
     id,
-    name: humanizeModelName(id),
+    // Use the API model id as the primary label (e.g. kilo-auto/free).
+    name: id,
     provider: inferred.provider,
     providerLabel: owner ? toTitleCase(owner) : inferred.providerLabel,
   };

@@ -1,42 +1,15 @@
 "use client";
 
-import { DefaultChatTransport } from "ai";
-import { useChat } from "@ai-sdk/react";
-import {
-  AlertCircleIcon,
-  BotIcon,
-  CheckIcon,
-  CopyIcon,
-  ExternalLinkIcon,
-  Loader2Icon,
-  Settings2Icon,
-} from "lucide-react";
+import type { UIMessage } from "ai";
+import { Loader2Icon, LogOutIcon, MenuIcon } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import {
-  Conversation,
-  ConversationContent,
-  ConversationEmptyState,
-  ConversationScrollButton,
-} from "@/components/ai-elements/conversation";
-import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
-import {
-  PromptInput,
-  PromptInputBody,
-  PromptInputFooter,
-  PromptInputSelect,
-  PromptInputSelectContent,
-  PromptInputSelectItem,
-  PromptInputSelectTrigger,
-  PromptInputSelectValue,
-  PromptInputSubmit,
-  PromptInputTextarea,
-  PromptInputTools,
-} from "@/components/ai-elements/prompt-input";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { MapsAuthSignIn } from "@/components/maps-auth-sign-in";
+import { MapsChatPanel } from "@/components/maps-chat-panel";
+import { MapsChatSidebar } from "@/components/maps-chat-sidebar";
+import { authClient } from "@/lib/auth-client";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -48,14 +21,31 @@ import {
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
+import {
+  areMessagesEqual,
+  normalizeStoredMessages,
+  createThread,
+  deriveTitleFromMessages,
+  filterThreads,
+  loadActiveThreadId,
+  loadThreads,
+  saveActiveThreadId,
+  saveThreads,
+  type ChatThread,
+} from "@/lib/maps-chat-store";
+import { DEFAULT_MODEL } from "@/lib/maps-system-prompt";
 import type { UiModel } from "@/lib/models";
-import { DEFAULT_MODEL } from "@/lib/repo-system-prompt";
+import { cn } from "@/lib/utils";
 
 type ModelApiResponse = {
   configured: boolean;
   message: string | null;
   data: UiModel[];
+};
+
+type DefaultProviderConfig = {
+  defaultConfigured: boolean;
+  defaultModel: string;
 };
 
 type ProviderSettings = {
@@ -65,22 +55,15 @@ type ProviderSettings = {
   systemPrompt: string;
 };
 
-const STORAGE_KEY = "ai-ide-template-settings-v2";
+const STORAGE_KEY = "maps-assistant-settings-v1";
 
 const FALLBACK_MODELS: UiModel[] = [
   {
     id: DEFAULT_MODEL,
-    name: "Titan 5.4",
+    name: DEFAULT_MODEL,
     provider: "openai",
     providerLabel: "OpenAI-compatible",
   },
-];
-
-const suggestedPrompts = [
-  "Give me a quick tour of this template and what I should customize first.",
-  "How do I clone this template into a private repository with gh CLI?",
-  "Show me where to change the system prompt and deployment hostname.",
-  "How do I deploy this Next.js app to my VPS with Podman and Cloudflare Tunnel?",
 ];
 
 function loadSettings(): ProviderSettings {
@@ -122,37 +105,73 @@ function loadSettings(): ProviderSettings {
   }
 }
 
-function getModelLabel(model: UiModel) {
-  return `${model.name} · ${model.providerLabel}`;
+function ensureInitialThreads(): { threads: ChatThread[]; activeId: string } {
+  const stored = loadThreads();
+  const activeStored = loadActiveThreadId();
+
+  if (stored.length > 0) {
+    const activeId =
+      activeStored && stored.some((t) => t.id === activeStored)
+        ? activeStored
+        : stored[0].id;
+    return { threads: stored, activeId };
+  }
+
+  const first = createThread();
+  saveThreads([first]);
+  saveActiveThreadId(first.id);
+  return { threads: [first], activeId: first.id };
 }
 
 export function HomePageClient() {
+  const [threads, setThreads] = useState<ChatThread[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const signedIn = Boolean(session?.user);
+
   const [settings, setSettings] = useState<ProviderSettings>(() => loadSettings());
   const [draftSettings, setDraftSettings] = useState<ProviderSettings>(() => loadSettings());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [models, setModels] = useState<UiModel[]>(FALLBACK_MODELS);
   const [modelsMessage, setModelsMessage] = useState<string | null>(null);
   const [modelsLoading, setModelsLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [chatKey, setChatKey] = useState(0);
+  const [defaultProvider, setDefaultProvider] = useState<DefaultProviderConfig>({
+    defaultConfigured: false,
+    defaultModel: DEFAULT_MODEL,
+  });
+
+  const usesCustomProvider = settings.baseURL.trim() !== "";
+  const showModelsAlert = !defaultProvider.defaultConfigured && !usesCustomProvider;
 
   useEffect(() => {
+    const { threads: initialThreads, activeId } = ensureInitialThreads();
+    setThreads(initialThreads);
+    setActiveThreadId(activeId);
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated || !signedIn) return;
+
+    void (async () => {
+      try {
+        const response = await fetch("/api/ai/provider", { cache: "no-store" });
+        if (!response.ok) return;
+        const config = (await response.json()) as DefaultProviderConfig;
+        setDefaultProvider(config);
+      } catch {
+        // Keep fallback; custom provider may still work.
+      }
+    })();
+  }, [hydrated, signedIn]);
+
+  useEffect(() => {
+    if (!hydrated) return;
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  }, [settings]);
-
-  useEffect(() => {
-    if (!copied) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setCopied(false);
-    }, 1200);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [copied]);
+  }, [hydrated, settings]);
 
   const modelOptions = useMemo(() => {
     const map = new Map<string, UiModel>();
@@ -173,65 +192,170 @@ export function HomePageClient() {
     return Array.from(map.values());
   }, [models, settings.model]);
 
-  const loadModels = useCallback(async (nextSettings: ProviderSettings) => {
-    if (!nextSettings.baseURL.trim()) {
-      setModels(FALLBACK_MODELS);
-      setModelsMessage("Set an OpenAI-compatible URL in settings to load models.");
-      return;
-    }
+  const loadModels = useCallback(
+    async (
+      nextSettings: ProviderSettings,
+      providerConfig: DefaultProviderConfig = defaultProvider,
+    ) => {
+      const custom = nextSettings.baseURL.trim() !== "";
 
-    setModelsLoading(true);
-
-    try {
-      const response = await fetch("/api/models", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          baseURL: nextSettings.baseURL,
-          apiKey: nextSettings.apiKey,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed with status ${response.status}`);
+      if (!custom && !providerConfig.defaultConfigured) {
+        setModels(FALLBACK_MODELS);
+        setModelsMessage(
+          "Configure AI_PROVIDER_* on the server or add a custom OpenAI-compatible URL in API settings.",
+        );
+        return;
       }
 
-      const payload = (await response.json()) as ModelApiResponse;
-      setModels(payload.data.length > 0 ? payload.data : FALLBACK_MODELS);
-      setModelsMessage(payload.message ?? null);
+      setModelsLoading(true);
 
-      if (payload.data.length > 0 && !payload.data.some((model) => model.id === nextSettings.model)) {
-        setSettings((prev) => ({
-          ...prev,
-          model: payload.data[0].id,
-        }));
-      }
-    } catch {
-      setModels(FALLBACK_MODELS);
-      setModelsMessage("Could not load models from the configured API.");
-    } finally {
+      try {
+        const response = await fetch("/api/models", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(
+            custom
+              ? {
+                  baseURL: nextSettings.baseURL,
+                  apiKey: nextSettings.apiKey,
+                }
+              : {},
+          ),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed with status ${response.status}`);
+        }
+
+        const payload = (await response.json()) as ModelApiResponse;
+        setModels(payload.data.length > 0 ? payload.data : FALLBACK_MODELS);
+        setModelsMessage(payload.message ?? null);
+
+        const preferredModel = nextSettings.model.trim();
+        const hasPreferred =
+          preferredModel.length > 0 &&
+          payload.data.some((model) => model.id === preferredModel);
+
+        if (payload.data.length > 0 && !hasPreferred) {
+          setSettings((prev) => ({
+            ...prev,
+            model: payload.data[0]!.id,
+          }));
+        }
+      } catch {
+        setModels(FALLBACK_MODELS);
+        setModelsMessage("Could not load models from the configured API.");
+      } finally {
       setModelsLoading(false);
     }
+  },
+    [defaultProvider],
+  );
+
+  useEffect(() => {
+    if (!hydrated || !signedIn) return;
+    void loadModels(settings, defaultProvider);
+    // Reload model list when provider config changes — not when only the selected model changes.
+  }, [
+    hydrated,
+    signedIn,
+    loadModels,
+    defaultProvider,
+    settings.baseURL,
+    settings.apiKey,
+  ]);
+
+  const signOut = useCallback(async () => {
+    await authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          window.location.href = "/";
+        },
+      },
+    });
+  }, []);
+
+  const visibleThreads = useMemo(
+    () => filterThreads(threads, searchQuery),
+    [threads, searchQuery],
+  );
+
+  const activeThread = useMemo(
+    () => threads.find((t) => t.id === activeThreadId) ?? null,
+    [threads, activeThreadId],
+  );
+
+  const persistThreads = useCallback((next: ChatThread[]) => {
+    setThreads(next);
+    saveThreads(next);
+  }, []);
+
+  const handleSelectThread = useCallback((id: string) => {
+    setActiveThreadId(id);
+    saveActiveThreadId(id);
+    setSidebarOpen(false);
   }, []);
 
   useEffect(() => {
-    void loadModels(settings);
-  }, [loadModels, settings]);
+    if (!sidebarOpen) return;
 
-  const chat = useChat({
-    id: `template-chat-${chatKey}`,
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      body: {
-        baseURL: settings.baseURL,
-        apiKey: settings.apiKey,
-        model: settings.model || DEFAULT_MODEL,
-        systemPrompt: settings.systemPrompt,
-      },
-    }),
-  });
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [sidebarOpen]);
+
+  const handleNewChat = useCallback(() => {
+    const thread = createThread();
+    const next = [thread, ...threads];
+    persistThreads(next);
+    handleSelectThread(thread.id);
+    setSearchQuery("");
+  }, [handleSelectThread, persistThreads, threads]);
+
+  const handleMessagesChange = useCallback((threadId: string, messages: UIMessage[]) => {
+    setThreads((prev) => {
+      const current = prev.find((t) => t.id === threadId);
+      if (current && areMessagesEqual(current.messages, messages)) {
+        return prev;
+      }
+
+      const persistedMessages = normalizeStoredMessages(messages);
+
+      const next = prev.map((t) =>
+        t.id === threadId
+          ? {
+              ...t,
+              messages: persistedMessages,
+              title: deriveTitleFromMessages(persistedMessages),
+              updatedAt: Date.now(),
+            }
+          : t,
+      );
+      saveThreads(next);
+      return next;
+    });
+  }, []);
+
+  const handleActiveMessagesChange = useCallback(
+    (messages: UIMessage[]) => {
+      if (!activeThreadId) return;
+      handleMessagesChange(activeThreadId, messages);
+    },
+    [activeThreadId, handleMessagesChange],
+  );
 
   const handleSaveSettings = useCallback(() => {
     const nextModel = draftSettings.model.trim() || settings.model || DEFAULT_MODEL;
@@ -245,205 +369,156 @@ export function HomePageClient() {
 
     setSettings(nextSettings);
     setSettingsOpen(false);
-    setChatKey((value) => value + 1);
-    void loadModels(nextSettings);
-  }, [draftSettings, loadModels, settings.model]);
+    void loadModels(nextSettings, defaultProvider);
+  }, [draftSettings, defaultProvider, loadModels, settings.model]);
 
-  const handleCopyCommand = useCallback(async () => {
-    await navigator.clipboard.writeText(
-      "gh repo create my-new-repo --template uratmangun/ai-ide-template --private --clone",
+  if (!hydrated || sessionPending) {
+    return (
+      <main className="maps-quota-light flex min-h-screen items-center justify-center">
+        <Loader2Icon className="size-6 animate-spin text-[#64748b]" />
+      </main>
     );
-    setCopied(true);
-  }, []);
-
-  const handleSubmitPrompt = useCallback(
-    ({ text }: { text: string }) => {
-      const content = text.trim();
-
-      if (!content || chat.status === "submitted" || chat.status === "streaming") {
-        return;
-      }
-
-      void chat.sendMessage({
-        role: "user",
-        parts: [
-          {
-            type: "text",
-            text: content,
-          },
-        ],
-      });
-    },
-    [chat],
-  );
-
-  const isSending = chat.status === "submitted" || chat.status === "streaming";
+  }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 px-4 py-5 md:px-8 md:py-8">
-      <Card className="border-foreground/10 bg-card/80 shadow-lg backdrop-blur">
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-col gap-2">
-              <Badge variant="secondary">Next.js + AI SDK + Podman</Badge>
-              <CardTitle className="text-2xl tracking-tight md:text-3xl">AI IDE Template</CardTitle>
-              <CardDescription>
-                Clone fast with GitHub CLI, then run this chat shell against any OpenAI-compatible endpoint.
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button onClick={handleCopyCommand} variant="outline">
-                {copied ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
-                {copied ? "Copied" : "Copy clone command"}
-              </Button>
+    <main className="maps-quota-light min-h-screen">
+      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 md:px-6 md:py-6">
+        <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {signedIn ? (
               <Button
-                onClick={() => {
-                  window.open("https://github.com/uratmangun/ai-ide-template", "_blank", "noopener,noreferrer");
-                }}
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setSidebarOpen(true)}
+                className="size-9 shrink-0 rounded-xl border-[#e2e8f0] bg-white text-[#334155] hover:bg-[#f8fafc] hover:text-black [&_svg]:hover:text-black"
+                aria-label="Open chats"
               >
-                <ExternalLinkIcon className="size-4" />
-                Open repo
+                <MenuIcon className="size-4" />
               </Button>
+            ) : null}
+            <span className="flex size-9 items-center justify-center rounded-xl bg-[#1a73e8] text-sm font-bold text-white">
+              M
+            </span>
+            <div>
+              <h1 className="text-[17px] font-semibold tracking-tight text-[#0f172a]">Maps assistant</h1>
+              <p className="text-[12px] text-[#64748b]">
+                {signedIn && session?.user.email
+                  ? session.user.email
+                  : "Directions, places, and nearby search"}
+              </p>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <code className="block rounded-md border border-foreground/10 bg-background/60 px-3 py-2 font-mono text-xs text-foreground/90 md:text-sm">
-            gh repo create my-new-repo --template uratmangun/ai-ide-template --private --clone
-          </code>
-        </CardContent>
-      </Card>
-
-      <Card className="flex min-h-[68vh] flex-col border-foreground/10 bg-card/85 shadow-xl backdrop-blur">
-        <CardHeader className="border-b border-border/60">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <BotIcon className="size-4 text-primary" />
-              <CardTitle className="text-base">Repository assistant</CardTitle>
-              <Badge variant="outline">{settings.model || DEFAULT_MODEL}</Badge>
-            </div>
-            <Button
-              onClick={() => {
-                setDraftSettings(settings);
-                setSettingsOpen(true);
-              }}
-              size="sm"
-              variant="outline"
+          <nav className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/maps-usage"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "h-8 rounded-lg border-[#e2e8f0] bg-white text-[12px] text-[#334155]",
+              )}
             >
-              <Settings2Icon className="size-4" />
-              Provider settings
-            </Button>
-          </div>
-          {modelsMessage ? (
-            <Alert>
-              <AlertCircleIcon className="size-4" />
-              <AlertTitle>Model source</AlertTitle>
-              <AlertDescription>{modelsMessage}</AlertDescription>
-            </Alert>
-          ) : null}
-        </CardHeader>
+              Usage dashboard
+            </Link>
+            <Link
+              href="/maps-usage/alerts"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "h-8 rounded-lg border-[#e2e8f0] bg-white text-[12px] text-[#334155]",
+              )}
+            >
+              Quota alerts
+            </Link>
+            {signedIn ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void signOut()}
+                className="h-8 gap-1.5 rounded-lg border-[#e2e8f0] bg-white text-[12px] text-[#334155]"
+              >
+                <LogOutIcon className="size-3.5" />
+                Sign out
+              </Button>
+            ) : null}
+          </nav>
+        </header>
 
-        <CardContent className="flex min-h-0 flex-1 flex-col gap-3 p-0">
-          <Conversation>
-            <ConversationContent>
-              {chat.messages.length === 0 ? (
-                <ConversationEmptyState
-                  title="Ask about customizing this template"
-                  description="Try one of the prompts below or write your own deployment question."
-                  icon={<BotIcon className="size-5" />}
-                >
-                  <div className="grid w-full max-w-3xl gap-2 md:grid-cols-2">
-                    {suggestedPrompts.map((prompt) => (
-                      <Button
-                        className="h-auto justify-start whitespace-normal text-left"
-                        key={prompt}
-                        onClick={() => {
-                          void handleSubmitPrompt({ text: prompt });
-                        }}
-                        variant="outline"
-                      >
-                        {prompt}
-                      </Button>
-                    ))}
-                  </div>
-                </ConversationEmptyState>
-              ) : null}
+        {!signedIn ? (
+          <MapsAuthSignIn className="min-h-[68vh] flex-1" callbackURL="/" />
+        ) : !activeThreadId || !activeThread ? (
+          <main className="flex flex-1 items-center justify-center">
+            <Loader2Icon className="size-6 animate-spin text-[#64748b]" />
+          </main>
+        ) : (
+          <>
+            <MapsChatSidebar
+              open={sidebarOpen}
+              onClose={() => setSidebarOpen(false)}
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
+              visibleThreads={visibleThreads}
+              activeThreadId={activeThreadId}
+              onNewChat={handleNewChat}
+              onSelectThread={handleSelectThread}
+            />
 
-              {chat.messages.map((message) => (
-                <Message from={message.role} key={message.id}>
-                  <MessageContent>
-                    {message.parts
-                      .filter((part) => part.type === "text")
-                      .map((part, index) => (
-                        <MessageResponse key={`${message.id}-text-${index}`}>{part.text}</MessageResponse>
-                      ))}
-                  </MessageContent>
-                </Message>
-              ))}
-            </ConversationContent>
-            <ConversationScrollButton />
-          </Conversation>
-
-          <Separator />
-
-          <div className="p-3 pt-0 md:p-4 md:pt-0">
-            <PromptInput onSubmit={handleSubmitPrompt}>
-              <PromptInputBody>
-                <PromptInputTextarea disabled={isSending} placeholder="Ask about this template, deployment, or customization…" />
-              </PromptInputBody>
-              <PromptInputFooter>
-                <PromptInputTools>
-                  <PromptInputSelect
-                    disabled={modelsLoading}
-                    onValueChange={(value) => {
-                      if (value) {
-                        setSettings((prev) => ({
-                          ...prev,
-                          model: typeof value === "string" ? value : String(value),
-                        }));
-                        setChatKey((current) => current + 1);
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="min-w-0 flex-1">
+                <MapsChatPanel
+                  key={activeThreadId}
+                  threadId={activeThreadId}
+                  initialMessages={activeThread.messages}
+                  settings={settings}
+                  models={modelOptions}
+                  modelsLoading={modelsLoading}
+                  modelsMessage={modelsMessage}
+                  showModelsAlert={showModelsAlert}
+                  onMessagesChange={handleActiveMessagesChange}
+                  onOpenSettings={() => {
+                    setDraftSettings(settings);
+                    setSettingsOpen(true);
+                  }}
+                  onModelChange={(modelId) => {
+                    setSettings((prev) => {
+                      const next = { ...prev, model: modelId };
+                      if (typeof window !== "undefined") {
+                        window.localStorage.setItem(
+                          STORAGE_KEY,
+                          JSON.stringify(next),
+                        );
                       }
-                    }}
-                    value={settings.model}
-                  >
-                    <PromptInputSelectTrigger className="min-w-64 md:min-w-80">
-                      {modelsLoading ? (
-                        <span className="inline-flex items-center gap-2">
-                          <Loader2Icon className="size-3.5 animate-spin" />
-                          Loading models
-                        </span>
-                      ) : (
-                        <PromptInputSelectValue placeholder="Select model" />
-                      )}
-                    </PromptInputSelectTrigger>
-                    <PromptInputSelectContent>
-                      {modelOptions.map((model) => (
-                        <PromptInputSelectItem key={model.id} value={model.id}>
-                          {getModelLabel(model)}
-                        </PromptInputSelectItem>
-                      ))}
-                    </PromptInputSelectContent>
-                  </PromptInputSelect>
-                </PromptInputTools>
-                <PromptInputSubmit onStop={() => chat.stop()} status={chat.status} />
-              </PromptInputFooter>
-            </PromptInput>
-          </div>
-        </CardContent>
-      </Card>
+                      return next;
+                    });
+                  }}
+                />
+              </div>
+            </div>
+          </>
+        )}
+      </div>
 
       <Dialog onOpenChange={setSettingsOpen} open={settingsOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Provider settings</DialogTitle>
-            <DialogDescription>
-              Use a public OpenAI-compatible HTTPS API. Settings are stored locally in your browser.
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="flex max-h-[90dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+          <div className="shrink-0 space-y-3 bg-popover px-4 pt-4">
+            <DialogHeader>
+              <DialogTitle>API settings</DialogTitle>
+              <DialogDescription>
+                The Maps assistant uses the app&apos;s built-in provider by default. Optionally
+                connect your own OpenAI-compatible endpoint — stored locally in your browser.
+              </DialogDescription>
+            </DialogHeader>
 
-          <FieldGroup>
+            {defaultProvider.defaultConfigured && !draftSettings.baseURL.trim() ? (
+              <p className="rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2 text-[12px] text-[#334155]">
+                Using the app provider. Leave the URL empty to keep the built-in provider.
+              </p>
+            ) : null}
+          </div>
+
+          <div className="max-h-[calc(90dvh-12rem)] overflow-y-auto overscroll-contain bg-popover px-4 pt-2 pb-3">
+            <FieldGroup className="gap-5 pb-0">
             <Field>
-              <FieldLabel htmlFor="base-url">OpenAI-compatible base URL</FieldLabel>
+              <FieldLabel htmlFor="base-url">Custom provider URL (optional)</FieldLabel>
               <FieldContent>
                 <Input
                   id="base-url"
@@ -457,13 +532,14 @@ export function HomePageClient() {
                   value={draftSettings.baseURL}
                 />
                 <FieldDescription>
-                  Must be a public HTTPS endpoint and should include the provider API version path.
+                  Public HTTPS endpoint including the API version path (e.g. /v1). Clear to use
+                  the built-in provider.
                 </FieldDescription>
               </FieldContent>
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="api-key">API key (optional)</FieldLabel>
+              <FieldLabel htmlFor="api-key">Custom API key (optional)</FieldLabel>
               <FieldContent>
                 <Input
                   id="api-key"
@@ -481,10 +557,27 @@ export function HomePageClient() {
             </Field>
 
             <Field>
+              <FieldLabel htmlFor="model-id">Default model</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="model-id"
+                  onChange={(event) => {
+                    setDraftSettings((prev) => ({
+                      ...prev,
+                      model: event.target.value,
+                    }));
+                  }}
+                  placeholder={DEFAULT_MODEL}
+                  value={draftSettings.model}
+                />
+              </FieldContent>
+            </Field>
+
+            <Field>
               <FieldLabel htmlFor="system-prompt">System prompt override</FieldLabel>
               <FieldContent>
                 <Textarea
-                  className="min-h-36 font-mono text-sm"
+                  className="mb-0 min-h-36 font-mono text-sm"
                   id="system-prompt"
                   onChange={(event) => {
                     setDraftSettings((prev) => ({
@@ -492,26 +585,30 @@ export function HomePageClient() {
                       systemPrompt: event.target.value,
                     }));
                   }}
-                  placeholder="Leave blank to use the repository default system prompt."
+                  placeholder="Leave blank to use the Maps assistant default system prompt."
                   value={draftSettings.systemPrompt}
                 />
-                <FieldDescription>
-                  Leave blank to use the default system prompt from this repository.
-                </FieldDescription>
               </FieldContent>
             </Field>
           </FieldGroup>
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="mx-0 mb-0 mt-0 shrink-0 gap-0 rounded-b-xl border-t border-border bg-popover !p-0">
             <Button
               onClick={() => {
                 setSettingsOpen(false);
               }}
               variant="outline"
+              className="my-3 mr-2 mb-3 ml-3 sm:ml-0"
             >
               Cancel
             </Button>
-            <Button onClick={handleSaveSettings}>Save settings</Button>
+            <Button
+              onClick={handleSaveSettings}
+              className="my-3 mr-4 mb-3 bg-[#1a73e8] text-white hover:bg-[#1557b0] hover:text-white"
+            >
+              Save settings
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

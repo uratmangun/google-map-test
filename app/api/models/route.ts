@@ -1,7 +1,8 @@
 import { z } from "zod";
 
+import { requireApiSession } from "@/lib/api-auth";
+import { resolveAiProvider } from "@/lib/ai-provider";
 import { normalizeModel, type ProxyModelsResponse } from "@/lib/models";
-import { validateProviderBaseUrl } from "@/lib/provider-url";
 
 const requestSchema = z.object({
   baseURL: z.string().trim().default(""),
@@ -9,6 +10,11 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const authResult = await requireApiSession();
+  if (authResult.errorResponse) {
+    return authResult.errorResponse;
+  }
+
   const raw = await request.json().catch(() => null);
   const parsed = requestSchema.safeParse(raw);
 
@@ -25,35 +31,27 @@ export async function POST(request: Request) {
 
   const { baseURL, apiKey } = parsed.data;
 
-  if (!baseURL) {
+  const resolved = resolveAiProvider({
+    clientBaseURL: baseURL,
+    clientApiKey: apiKey,
+  });
+
+  if (!resolved.ok) {
     return Response.json(
       {
         configured: false,
         data: [],
-        message: "Open provider settings and add an OpenAI-compatible URL to load models.",
-      },
-      { status: 200 },
-    );
-  }
-
-  const validatedBaseUrl = validateProviderBaseUrl(baseURL);
-
-  if (!validatedBaseUrl.ok) {
-    return Response.json(
-      {
-        configured: true,
-        data: [],
-        message: validatedBaseUrl.error,
+        message: resolved.error,
       },
       { status: 200 },
     );
   }
 
   try {
-    const response = await fetch(`${validatedBaseUrl.normalizedUrl}/models`, {
-      headers: apiKey
+    const response = await fetch(`${resolved.baseURL}/models`, {
+      headers: resolved.apiKey
         ? {
-            Authorization: `Bearer ${apiKey}`,
+            Authorization: `Bearer ${resolved.apiKey}`,
           }
         : undefined,
       cache: "no-store",

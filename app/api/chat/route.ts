@@ -7,8 +7,10 @@ import {
 } from "ai";
 import { z } from "zod";
 
-import { DEFAULT_MODEL, REPO_SYSTEM_PROMPT } from "@/lib/repo-system-prompt";
-import { validateProviderBaseUrl } from "@/lib/provider-url";
+import { requireApiSession } from "@/lib/api-auth";
+import { resolveAiProvider, resolveChatModel } from "@/lib/ai-provider";
+import { formatProviderError } from "@/lib/chat-errors";
+import { DEFAULT_MODEL, MAPS_SYSTEM_PROMPT } from "@/lib/maps-system-prompt";
 
 const requestSchema = z.object({
   messages: z.array(z.unknown()).default([]),
@@ -23,6 +25,11 @@ function toValidationResponse(message: string, status = 400) {
 }
 
 export async function POST(request: Request) {
+  const authResult = await requireApiSession();
+  if (authResult.errorResponse) {
+    return authResult.errorResponse;
+  }
+
   const raw = await request.json().catch(() => null);
   const parsed = requestSchema.safeParse(raw);
 
@@ -32,10 +39,13 @@ export async function POST(request: Request) {
 
   const { messages, model, baseURL, apiKey, systemPrompt } = parsed.data;
 
-  const validatedBaseUrl = validateProviderBaseUrl(baseURL);
+  const resolved = resolveAiProvider({
+    clientBaseURL: baseURL,
+    clientApiKey: apiKey,
+  });
 
-  if (!validatedBaseUrl.ok) {
-    return toValidationResponse(validatedBaseUrl.error);
+  if (!resolved.ok) {
+    return toValidationResponse(resolved.error);
   }
 
   const validatedMessages = await validateUIMessages<UIMessage>({ messages }).catch(() => null);
@@ -56,15 +66,16 @@ export async function POST(request: Request) {
   }
 
   const provider = createOpenAICompatible({
-    name: "template-provider",
-    baseURL: validatedBaseUrl.normalizedUrl,
-    apiKey: apiKey?.trim() || undefined,
+    name: resolved.source === "default" ? "maps-default-provider" : "maps-custom-provider",
+    baseURL: resolved.baseURL,
+    apiKey: resolved.apiKey,
   });
 
-  const resolvedSystemPrompt = systemPrompt?.trim() || REPO_SYSTEM_PROMPT;
+  const resolvedSystemPrompt = systemPrompt?.trim() || MAPS_SYSTEM_PROMPT;
+  const resolvedModel = resolveChatModel(model, resolved);
 
   const result = streamText({
-    model: provider.chatModel(model || DEFAULT_MODEL),
+    model: provider.chatModel(resolvedModel),
     system: resolvedSystemPrompt,
     messages: modelMessages,
   });
@@ -73,5 +84,6 @@ export async function POST(request: Request) {
     originalMessages: validatedMessages,
     sendStart: true,
     sendFinish: true,
+    onError: formatProviderError,
   });
 }
