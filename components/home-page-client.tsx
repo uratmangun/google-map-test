@@ -3,7 +3,7 @@
 import type { UIMessage } from "ai";
 import { Loader2Icon, LogOutIcon, MenuIcon } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { MapsAuthSignIn } from "@/components/maps-auth-sign-in";
 import { MapsChatPanel } from "@/components/maps-chat-panel";
@@ -24,9 +24,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   areMessagesEqual,
-  normalizeStoredMessages,
   sanitizeMessagesForStorage,
   createThread,
+  dedupeThreads,
   deriveTitleFromMessages,
   filterThreads,
   loadActiveThreadId,
@@ -35,6 +35,10 @@ import {
   saveThreads,
   type ChatThread,
 } from "@/lib/maps-chat-store";
+import {
+  fetchRemoteChatState,
+  saveRemoteChatState,
+} from "@/lib/maps-chat-sync-client";
 import { DEFAULT_MODEL } from "@/lib/maps-system-prompt";
 import type { UiModel } from "@/lib/models";
 import { cn } from "@/lib/utils";
@@ -131,6 +135,10 @@ export function HomePageClient() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [serverSynced, setServerSynced] = useState(false);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeThreadIdRef = useRef<string | null>(null);
+  const threadsRef = useRef<ChatThread[]>([]);
   const { data: session, isPending: sessionPending } = authClient.useSession();
   const signedIn = Boolean(session?.user);
 
@@ -149,11 +157,100 @@ export function HomePageClient() {
   const showModelsAlert = !defaultProvider.defaultConfigured && !usesCustomProvider;
 
   useEffect(() => {
-    const { threads: initialThreads, activeId } = ensureInitialThreads();
-    setThreads(initialThreads);
-    setActiveThreadId(activeId);
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    activeThreadIdRef.current = activeThreadId;
+  }, [activeThreadId]);
+
+  useEffect(() => {
+    threadsRef.current = threads;
+  }, [threads]);
+
+  const scheduleServerSync = useCallback(
+    (next: ChatThread[], activeId: string) => {
+      if (!serverSynced || !signedIn) return;
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current);
+      }
+      syncTimerRef.current = setTimeout(() => {
+        void saveRemoteChatState(next, activeId).catch(() => {
+          // Keep local cache; user can refresh to retry.
+        });
+      }, 500);
+    },
+    [serverSynced, signedIn],
+  );
+
+  useEffect(() => {
+    if (!hydrated) return;
+
+    if (!signedIn) {
+      setServerSynced(false);
+      setThreads([]);
+      setActiveThreadId(null);
+      return;
+    }
+
+    let cancelled = false;
+    setServerSynced(false);
+
+    void (async () => {
+      try {
+        const remote = await fetchRemoteChatState();
+        const local = loadThreads();
+        let nextThreads = dedupeThreads(remote.threads);
+        let activeId = remote.activeThreadId;
+
+        if (nextThreads.length === 0 && local.length > 0) {
+          nextThreads = dedupeThreads(local);
+          const storedActive = loadActiveThreadId();
+          activeId =
+            storedActive && nextThreads.some((t) => t.id === storedActive)
+              ? storedActive
+              : (nextThreads[0]?.id ?? null);
+          if (activeId) {
+            const saved = await saveRemoteChatState(nextThreads, activeId);
+            nextThreads = saved.threads;
+            activeId = saved.activeThreadId;
+          }
+        }
+
+        if (nextThreads.length === 0) {
+          const first = createThread();
+          nextThreads = [first];
+          activeId = first.id;
+          await saveRemoteChatState(nextThreads, activeId);
+        }
+
+        if (!activeId || !nextThreads.some((t) => t.id === activeId)) {
+          activeId = nextThreads[0]!.id;
+        }
+
+        if (cancelled) return;
+
+        saveThreads(nextThreads);
+        saveActiveThreadId(activeId);
+        setThreads(nextThreads);
+        setActiveThreadId(activeId);
+        setServerSynced(true);
+      } catch {
+        if (cancelled) return;
+        const { threads: initialThreads, activeId } = ensureInitialThreads();
+        const fallback = dedupeThreads(initialThreads);
+        saveThreads(fallback);
+        saveActiveThreadId(activeId);
+        setThreads(fallback);
+        setActiveThreadId(activeId);
+        setServerSynced(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, signedIn]);
 
   useEffect(() => {
     if (!hydrated || !signedIn) return;
@@ -289,16 +386,28 @@ export function HomePageClient() {
     [threads, activeThreadId],
   );
 
-  const persistThreads = useCallback((next: ChatThread[]) => {
-    setThreads(next);
-    saveThreads(next);
-  }, []);
+  const persistThreads = useCallback(
+    (next: ChatThread[], opts?: { activeId?: string }) => {
+      const deduped = dedupeThreads(next);
+      setThreads(deduped);
+      saveThreads(deduped);
+      const activeId = opts?.activeId ?? activeThreadIdRef.current;
+      if (activeId) {
+        scheduleServerSync(deduped, activeId);
+      }
+    },
+    [scheduleServerSync],
+  );
 
-  const handleSelectThread = useCallback((id: string) => {
-    setActiveThreadId(id);
-    saveActiveThreadId(id);
-    setSidebarOpen(false);
-  }, []);
+  const handleSelectThread = useCallback(
+    (id: string) => {
+      setActiveThreadId(id);
+      saveActiveThreadId(id);
+      setSidebarOpen(false);
+      scheduleServerSync(threadsRef.current, id);
+    },
+    [scheduleServerSync],
+  );
 
   useEffect(() => {
     if (!sidebarOpen) return;
@@ -347,9 +456,13 @@ export function HomePageClient() {
           : t,
       );
       saveThreads(next);
+      const activeId = activeThreadIdRef.current;
+      if (serverSynced && activeId) {
+        scheduleServerSync(next, activeId);
+      }
       return next;
     });
-  }, []);
+  }, [scheduleServerSync, serverSynced]);
 
   const handleActiveMessagesChange = useCallback(
     (messages: UIMessage[]) => {
@@ -438,7 +551,7 @@ export function HomePageClient() {
 
         {!signedIn ? (
           <MapsAuthSignIn className="flex-1 justify-center" callbackURL="/" />
-        ) : !activeThreadId || !activeThread ? (
+        ) : !serverSynced || !activeThreadId || !activeThread ? (
           <main className="flex flex-1 items-center justify-center">
             <Loader2Icon className="size-6 animate-spin text-[#64748b]" />
           </main>

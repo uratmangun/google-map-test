@@ -41,6 +41,7 @@
     "lucide-react": "^1.8.0",
     "nanoid": "^5.1.7",
     "next": "^16.2.3",
+    "posthog-js": "^1.376.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "shadcn": "^4.2.0",

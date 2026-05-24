@@ -7,11 +7,16 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# NEXT_PUBLIC_* are inlined at build time — pass real PostHog token via --build-arg on VPS.
+ARG NEXT_PUBLIC_POSTHOG_TOKEN=build-placeholder-posthog-token
 # Placeholders only for `next build` page-data collection (.dockerignore excludes .env*).
 ENV BETTER_AUTH_SECRET=build-time-placeholder-secret-32chars
 ENV BETTER_AUTH_URL=https://maps.uratmangun.ovh
 ENV NEXT_PUBLIC_GPT_APP_ORIGIN=https://maps.uratmangun.ovh
 ENV NEXT_PUBLIC_MCP_APP_ORIGIN=https://maps.uratmangun.ovh
+ENV NEXT_PUBLIC_POSTHOG_TOKEN=${NEXT_PUBLIC_POSTHOG_TOKEN}
+ENV NEXT_PUBLIC_POSTHOG_HOST=/ingest
+ENV NEXT_PUBLIC_POSTHOG_UI_HOST=https://us.posthog.com
 ENV GOOGLE_CLIENT_ID=build-placeholder
 ENV GOOGLE_CLIENT_SECRET=build-placeholder
 ENV GOOGLE_MAPS_API_KEY=build-placeholder

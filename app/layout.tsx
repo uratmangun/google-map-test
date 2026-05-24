@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, IBM_Plex_Mono } from "next/font/google";
 
+import { PostHogProvider } from "@/components/posthog-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +32,9 @@ export default function RootLayout({
   return (
     <html className={cn("h-full antialiased", sans.variable, mono.variable)} lang="en">
       <body className="min-h-full bg-background text-foreground">
-        <TooltipProvider>{children}</TooltipProvider>
+        <PostHogProvider>
+          <TooltipProvider>{children}</TooltipProvider>
+        </PostHogProvider>
       </body>
     </html>
   );

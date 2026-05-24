@@ -282,14 +282,17 @@ export function MapsChatPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- thread switch + empty-chat hydrate only
   }, [threadId, initialMessages]);
 
-  // Persist live chat state to the parent (source of truth for reload via localStorage).
+  // Persist when idle — avoids saving mid-stream assistant turns with incomplete tool parts.
   useEffect(() => {
+    if (chat.status === "submitted" || chat.status === "streaming") {
+      return;
+    }
     if (areMessagesEqual(chat.messages, lastPersistedRef.current)) {
       return;
     }
     lastPersistedRef.current = chat.messages;
     onMessagesChangeRef.current(chat.messages);
-  }, [chat.messages]);
+  }, [chat.messages, chat.status]);
 
   useEffect(() => {
     const flushMessages = () => {

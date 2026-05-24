@@ -51,13 +51,18 @@ function normalizeToolPart(part: Record<string, unknown>): MapsToolPart | null {
   if (typeof toolCallId !== "string" || !toolCallId.trim()) {
     return null;
   }
-  if (typeof state !== "string" || !TOOL_STATES.has(state as MapsToolPart["state"])) {
+  if (typeof state !== "string" || !state.trim()) {
     return null;
   }
+  const normalizedState = TOOL_STATES.has(state as MapsToolPart["state"])
+    ? (state as MapsToolPart["state"])
+    : state === "partial-call" || state === "call"
+      ? "input-available"
+      : (state as MapsToolPart["state"]);
 
   const shared = {
     toolCallId,
-    state: state as MapsToolPart["state"],
+    state: normalizedState,
     ...(part.input !== undefined ? { input: part.input } : {}),
     ...(part.output !== undefined ? { output: part.output } : {}),
     ...(typeof part.errorText === "string" ? { errorText: part.errorText } : {}),
@@ -263,6 +268,31 @@ export function messageSearchText(messages: UIMessage[]): string {
   return messages
     .flatMap((m) => m.parts.map(partSearchText))
     .join(" ");
+}
+
+/** Drop duplicate ids and identical thread content (keeps newest). */
+export function dedupeThreads(threads: ChatThread[]): ChatThread[] {
+  const byId = new Map<string, ChatThread>();
+  for (const thread of threads) {
+    const existing = byId.get(thread.id);
+    if (!existing || thread.updatedAt >= existing.updatedAt) {
+      byId.set(thread.id, thread);
+    }
+  }
+
+  const byContent = new Set<string>();
+  const result: ChatThread[] = [];
+
+  for (const thread of [...byId.values()].sort((a, b) => b.updatedAt - a.updatedAt)) {
+    const contentKey = `${thread.title}\0${serializeMessagesKey(thread.messages)}`;
+    if (byContent.has(contentKey)) {
+      continue;
+    }
+    byContent.add(contentKey);
+    result.push(thread);
+  }
+
+  return result;
 }
 
 export function filterThreads(threads: ChatThread[], query: string): ChatThread[] {
