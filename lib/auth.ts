@@ -5,9 +5,12 @@ import { nextCookies } from "better-auth/next-js";
 
 import { getAppUrl, getAuthDatabase, getAuthSecret } from "@/lib/auth-db";
 
+const appUrl = getAppUrl();
+
 export const auth = betterAuth({
   appName: "Google Map Test",
-  baseURL: getAppUrl(),
+  baseURL: appUrl,
+  trustedOrigins: [appUrl, "https://maps.uratmangun.ovh"],
   secret: getAuthSecret(),
   database: getAuthDatabase(),
   socialProviders: {

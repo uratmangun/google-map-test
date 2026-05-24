@@ -11,3 +11,4 @@ tsconfig.tsbuildinfo
 .env*
 !.env.example
 data/
+gcp/

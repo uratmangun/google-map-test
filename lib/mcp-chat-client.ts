@@ -1,18 +1,37 @@
 import { createMCPClient, type MCPClient } from "@ai-sdk/mcp";
 
-const DEFAULT_MCP_CHAT_URL = "http://127.0.0.1:3000/mcp";
+function isLoopbackUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname;
+    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+  } catch {
+    return false;
+  }
+}
+
+/** Server-side MCP URL for /api/chat (same process, often pod hostname not loopback). */
+function resolveInternalMcpUrl(): string {
+  const port = process.env.PORT?.trim() || "3000";
+  const host =
+    process.env.MCP_INTERNAL_HOST?.trim() ||
+    (process.env.NODE_ENV === "production" ? "termux-stack" : "127.0.0.1");
+  return `http://${host}:${port}/mcp`;
+}
 
 export function getMcpChatUrl(): string {
-  const raw =
-    process.env.MCP_CHAT_URL?.trim() ||
-    process.env.NEXT_PUBLIC_MCP_APP_ORIGIN?.trim();
+  const raw = process.env.MCP_CHAT_URL?.trim();
 
   if (raw) {
     const base = raw.replace(/\/$/, "");
-    return base.endsWith("/mcp") ? base : `${base}/mcp`;
+    const url = base.endsWith("/mcp") ? base : `${base}/mcp`;
+    // In Podman pods Next often binds to pod IP only — 127.0.0.1:PORT refuses connections.
+    if (process.env.NODE_ENV === "production" && isLoopbackUrl(url)) {
+      return resolveInternalMcpUrl();
+    }
+    return url;
   }
 
-  return DEFAULT_MCP_CHAT_URL;
+  return resolveInternalMcpUrl();
 }
 
 export async function createMapsMcpClient(): Promise<MCPClient> {

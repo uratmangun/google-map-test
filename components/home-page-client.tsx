@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MapsAuthSignIn } from "@/components/maps-auth-sign-in";
 import { MapsChatPanel } from "@/components/maps-chat-panel";
+import { MapsMcpEndpointCopy } from "@/components/maps-mcp-endpoint-copy";
 import { MapsChatSidebar } from "@/components/maps-chat-sidebar";
 import { authClient } from "@/lib/auth-client";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -436,7 +437,7 @@ export function HomePageClient() {
         </header>
 
         {!signedIn ? (
-          <MapsAuthSignIn className="min-h-[68vh] flex-1" callbackURL="/" />
+          <MapsAuthSignIn className="flex-1 justify-center" callbackURL="/" />
         ) : !activeThreadId || !activeThread ? (
           <main className="flex flex-1 items-center justify-center">
             <Loader2Icon className="size-6 animate-spin text-[#64748b]" />
@@ -454,8 +455,9 @@ export function HomePageClient() {
               onSelectThread={handleSelectThread}
             />
 
-            <div className="flex min-h-0 flex-1 flex-col">
-              <div className="min-w-0 flex-1">
+            <div className="flex min-h-0 flex-1 flex-col gap-3">
+              <MapsMcpEndpointCopy className="max-w-none shrink-0" />
+              <div className="min-h-0 min-w-0 flex-1">
                 <MapsChatPanel
                   key={activeThreadId}
                   threadId={activeThreadId}

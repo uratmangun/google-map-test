@@ -7,9 +7,10 @@ import { auth, type BetterAuthSession } from "@/lib/auth";
 
 export type ApiSession = NonNullable<BetterAuthSession>;
 
-export async function requireApiSession():
+export async function requireApiSession(): Promise<
   | { session: ApiSession; errorResponse: null }
-  | { session: null; errorResponse: NextResponse } {
+  | { session: null; errorResponse: NextResponse }
+> {
   const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session?.user) {

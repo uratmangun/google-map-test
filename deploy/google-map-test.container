@@ -1,0 +1,29 @@
+[Unit]
+Description=Google Maps MCP Assistant
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=localhost/google-map-test:latest
+ContainerName=google-map-test
+Pod=termux-stack.pod
+EnvironmentFile=%h/apps/google-map-test/.env.local
+Environment=NODE_ENV=production
+Environment=PORT=3004
+Environment=HOSTNAME=0.0.0.0
+Environment=MCP_INTERNAL_HOST=termux-stack
+Environment=NEXT_TELEMETRY_DISABLED=1
+# Must be writable by container user nextjs (uid 100): sudo chown -R 100:101 %h/apps/google-map-test/data
+Volume=%h/apps/google-map-test/data:/data:Z
+# GCP service account for quota guard + /maps-usage (deploy/setup-gcp-monitoring-sa.sh)
+Volume=%h/apps/google-map-test/gcp/monitoring-sa.json:/run/gcp/monitoring-sa.json:ro,Z
+Environment=GOOGLE_APPLICATION_CREDENTIALS=/run/gcp/monitoring-sa.json
+AutoUpdate=local
+
+[Service]
+Restart=always
+RestartSec=10
+TimeoutStartSec=900
+
+[Install]
+WantedBy=default.target

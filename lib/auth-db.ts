@@ -10,12 +10,37 @@ const BUILD_DATABASE_PATH = "./.next/cache/google-map-test-build.sqlite";
 
 let db: Database.Database | null = null;
 
+function isLocalAppUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname;
+    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+  } catch {
+    return false;
+  }
+}
+
+const PRODUCTION_APP_ORIGIN = "https://maps.uratmangun.ovh";
+
+/** Auth base URL for OAuth callbacks. In production, never returns localhost. */
 export function getAppUrl(): string {
-  return (
-    process.env.BETTER_AUTH_URL ||
-    process.env.APP_URL ||
-    "http://localhost:3000"
-  ).replace(/\/$/, "");
+  const candidates = [
+    process.env.BETTER_AUTH_URL,
+    process.env.APP_URL,
+    process.env.PRODUCTION_APP_URL,
+    process.env.NEXT_PUBLIC_GPT_APP_ORIGIN,
+    process.env.NEXT_PUBLIC_MCP_APP_ORIGIN,
+  ]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value));
+
+  if (process.env.NODE_ENV === "production") {
+    const publicUrl = candidates.find((url) => !isLocalAppUrl(url));
+    if (publicUrl) return publicUrl.replace(/\/$/, "");
+    return PRODUCTION_APP_ORIGIN;
+  }
+
+  const configured = candidates.find((url) => !isLocalAppUrl(url)) ?? candidates[0];
+  return (configured ?? "http://localhost:3000").replace(/\/$/, "");
 }
 
 export function getAuthSecret(): string {

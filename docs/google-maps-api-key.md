@@ -97,7 +97,16 @@ GOOGLE_CLIENT_SECRET=<oauth-client-secret>
 
 (`AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` still work as aliases.)
 
-Usage counts are loaded on demand per API card (Refresh). The server needs ADC + Monitoring IAM on the project.
+Usage counts are loaded on demand per API card (Refresh). The server needs credentials with **Monitoring Viewer** on the project.
+
+**Local dev:** `gcloud auth application-default login`
+
+**Production (VPS):** service account `maps-quota-monitoring@coba-409011` with `roles/monitoring.viewer`, key at `gcp/monitoring-sa.json`:
+
+```bash
+CREATE=1 bash deploy/setup-gcp-monitoring-sa.sh   # one-time
+bash deploy/setup-gcp-monitoring-sa.sh            # copy key to VPS
+```
 
 `GCP_PROJECT_ID` must be the same project as `GOOGLE_MAPS_API_KEY`. The Places card reads **`places.googleapis.com`** (Places API New), not legacy `places-backend.googleapis.com`.
 
@@ -138,4 +147,4 @@ Definitions: `lib/maps-free-tier.ts`. [Pricing & free caps](https://developers.g
 - **Permission denied** — your user needs *API Keys Admin* (or Owner) on the project.
 - **Billing not enabled** — link a billing account to the project in Cloud Console.
 - **Key works locally but not in prod** — add your production origin under API key HTTP referrers in [Credentials](https://console.cloud.google.com/apis/credentials).
-- **Dashboard 401** — run `gcloud auth application-default login` and ensure Monitoring roles on the project.
+- **Dashboard 401 / default credentials** — local: `gcloud auth application-default login`. VPS: redeploy `gcp/monitoring-sa.json` via `deploy/setup-gcp-monitoring-sa.sh` and restart `google-map-test.service`.

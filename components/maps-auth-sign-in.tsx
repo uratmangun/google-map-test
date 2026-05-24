@@ -1,5 +1,6 @@
 "use client";
 
+import { MapsMcpEndpointCopy } from "@/components/maps-mcp-endpoint-copy";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -48,10 +49,12 @@ export function MapsAuthSignIn({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-6 rounded-2xl border border-[#e2e8f0] bg-white px-6 py-12 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.03)]",
+        "mx-auto flex w-full max-w-md flex-col items-center gap-4",
         className,
       )}
     >
+      <MapsMcpEndpointCopy className="w-full" />
+      <div className="flex w-full min-h-[min(68vh,520px)] flex-col items-center justify-center gap-6 rounded-2xl border border-[#e2e8f0] bg-white px-6 py-12 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.03)]">
       <div className="space-y-2">
         <h2 className="text-lg font-semibold text-[#0f172a]">{title}</h2>
         <p className="max-w-md text-[13px] text-[#64748b]">{description}</p>
@@ -64,6 +67,7 @@ export function MapsAuthSignIn({
         <GoogleIcon className="mr-2" />
         Sign in with Google
       </Button>
+      </div>
     </div>
   );
 }

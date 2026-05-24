@@ -121,28 +121,30 @@ export function MapsModelSelector({
 
   return (
     <ModelSelector onOpenChange={setOpen} open={open}>
-      <ModelSelectorTrigger asChild>
-        <PromptInputButton
-          className="h-8 max-w-[min(100%,20rem)] gap-1.5 px-2 font-normal text-[#0f172a] hover:bg-[#f8fafc] hover:text-[#0f172a]"
-          disabled={disabled || modelsLoading || models.length === 0}
-          type="button"
-          variant="ghost"
-        >
-          {modelsLoading ? (
-            <Loader2Icon className="size-3.5 shrink-0 animate-spin" />
-          ) : selectedModel ? (
-            <ModelSelectorLogo
-              className="size-3.5"
-              provider={normalizeProviderSlug(selectedModel.provider)}
-            />
-          ) : null}
-          <ModelSelectorName className="min-w-0 truncate font-mono text-xs font-medium text-[#0f172a]">
-            {modelsLoading
-              ? "Loading models…"
-              : (selectedModel?.id ?? selectedModelId ?? "Select model")}
-          </ModelSelectorName>
-          <ChevronsUpDownIcon className="size-3.5 shrink-0 text-[#64748b]" />
-        </PromptInputButton>
+      <ModelSelectorTrigger
+        render={
+          <PromptInputButton
+            className="h-8 max-w-[min(100%,20rem)] gap-1.5 px-2 font-normal text-[#0f172a] hover:bg-[#f8fafc] hover:text-[#0f172a]"
+            disabled={disabled || modelsLoading || models.length === 0}
+            type="button"
+            variant="ghost"
+          />
+        }
+      >
+        {modelsLoading ? (
+          <Loader2Icon className="size-3.5 shrink-0 animate-spin" />
+        ) : selectedModel ? (
+          <ModelSelectorLogo
+            className="size-3.5"
+            provider={normalizeProviderSlug(selectedModel.provider)}
+          />
+        ) : null}
+        <ModelSelectorName className="min-w-0 truncate font-mono text-xs font-medium text-[#0f172a]">
+          {modelsLoading
+            ? "Loading models…"
+            : (selectedModel?.id ?? selectedModelId ?? "Select model")}
+        </ModelSelectorName>
+        <ChevronsUpDownIcon className="size-3.5 shrink-0 text-[#64748b]" />
       </ModelSelectorTrigger>
       <ModelSelectorContent
         className={MODEL_SELECTOR_PANEL_CLASS}
