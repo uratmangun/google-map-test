@@ -1,9 +1,11 @@
 import { buildEmbedStreetViewUrl } from "@/lib/google-maps/embed-map";
+import { buildMapsStreetViewUrl } from "@/lib/google-maps/maps-links";
 import { formatMapUrlToon } from "@/lib/google-maps/toon";
 import { assertMcpQuotaAvailable } from "@/lib/maps-quota-guard";
 
 export type StreetViewToolPayload = {
   mapUrl: string;
+  embedUrl: string;
 };
 
 export type ShowStreetViewInput = {
@@ -19,14 +21,16 @@ export async function buildShowStreetViewPayload(
 ): Promise<StreetViewToolPayload> {
   await assertMcpQuotaAvailable("show-street-view");
   return {
-    mapUrl: buildEmbedStreetViewUrl(input),
+    mapUrl: buildMapsStreetViewUrl(input),
+    embedUrl: buildEmbedStreetViewUrl(input),
   };
 }
 
 export async function buildShowStreetViewToolResult(input: ShowStreetViewInput) {
-  const { mapUrl } = await buildShowStreetViewPayload(input);
+  const { mapUrl, embedUrl } = await buildShowStreetViewPayload(input);
   const structuredContent = {
     mapUrl,
+    embedUrl,
     args: {
       latitude: input.latitude,
       longitude: input.longitude,

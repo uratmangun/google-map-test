@@ -28,7 +28,8 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Streamdown } from "streamdown";
+import { MapsLinkSafetyModal } from "@/components/maps-link-safety-modal";
+import { Streamdown, type LinkSafetyConfig } from "streamdown";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
@@ -323,13 +324,19 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
 const streamdownPlugins = { cjk, code, math, mermaid };
 
+const mapsLinkSafety: LinkSafetyConfig = {
+  enabled: true,
+  renderModal: (props) => <MapsLinkSafetyModal {...props} />,
+};
+
 export const MessageResponse = memo(
-  ({ className, ...props }: MessageResponseProps) => (
+  ({ className, linkSafety = mapsLinkSafety, ...props }: MessageResponseProps) => (
     <Streamdown
       className={cn(
         "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         className
       )}
+      linkSafety={linkSafety}
       plugins={streamdownPlugins}
       {...props}
     />

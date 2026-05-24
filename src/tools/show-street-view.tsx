@@ -19,31 +19,31 @@ type ShowStreetViewInput = InferSchema<typeof showStreetViewSchema>;
 const IFRAME_WIDTH = 640;
 const IFRAME_HEIGHT = 400;
 
-function resolveMapUrl(value: unknown): string | null {
+function resolveEmbedUrl(value: unknown): string | null {
   if (!value || typeof value !== "object") return null;
   const v = value as Record<string, unknown>;
-  if (typeof v.mapUrl === "string" && v.mapUrl.trim()) return v.mapUrl;
   if (typeof v.embedUrl === "string" && v.embedUrl.trim()) return v.embedUrl;
+  const mapUrl = typeof v.mapUrl === "string" ? v.mapUrl.trim() : "";
+  if (mapUrl.includes("/maps/embed/")) return mapUrl;
   return null;
 }
 
 function resolvePayload(
-  props: ShowStreetViewInput &
-    Partial<StreetViewToolPayload & { embedUrl?: string }>,
+  props: ShowStreetViewInput & Partial<StreetViewToolPayload>,
   toolOutput: unknown,
-): StreetViewToolPayload | { error: string } | null {
-  const fromProps = resolveMapUrl(props);
-  if (fromProps) return { mapUrl: fromProps };
+): { embedUrl: string } | { error: string } | null {
+  const fromProps = resolveEmbedUrl(props);
+  if (fromProps) return { embedUrl: fromProps };
 
-  const fromTool = resolveMapUrl(toolOutput);
-  if (fromTool) return { mapUrl: fromTool };
+  const fromTool = resolveEmbedUrl(toolOutput);
+  if (fromTool) return { embedUrl: fromTool };
 
   if (toolOutput && typeof toolOutput === "object") {
     const wrapped = toolOutput as { args?: unknown; structuredContent?: unknown };
-    const fromArgs = resolveMapUrl(wrapped.args);
-    if (fromArgs) return { mapUrl: fromArgs };
-    const fromStructured = resolveMapUrl(wrapped.structuredContent);
-    if (fromStructured) return { mapUrl: fromStructured };
+    const fromArgs = resolveEmbedUrl(wrapped.args);
+    if (fromArgs) return { embedUrl: fromArgs };
+    const fromStructured = resolveEmbedUrl(wrapped.structuredContent);
+    if (fromStructured) return { embedUrl: fromStructured };
   }
 
   if (
@@ -81,8 +81,7 @@ function EmbeddedStreetView({ mapUrl }: { mapUrl: string }) {
 }
 
 export default function showStreetView(
-  props: ShowStreetViewInput &
-    Partial<StreetViewToolPayload & { embedUrl?: string }>,
+  props: ShowStreetViewInput & Partial<StreetViewToolPayload>,
 ) {
   const toolOutput = useToolOutput<unknown>();
   const resolved = useMemo(
@@ -106,5 +105,5 @@ export default function showStreetView(
     );
   }
 
-  return <EmbeddedStreetView mapUrl={resolved.mapUrl} />;
+  return <EmbeddedStreetView mapUrl={resolved.embedUrl} />;
 }

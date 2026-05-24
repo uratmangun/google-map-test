@@ -1,9 +1,13 @@
 import { buildEmbedViewUrl } from "@/lib/google-maps/embed-map";
+import { buildMapsViewUrl } from "@/lib/google-maps/maps-links";
 import { formatMapUrlToon } from "@/lib/google-maps/toon";
 import { assertMcpQuotaAvailable } from "@/lib/maps-quota-guard";
 
 export type MapToolPayload = {
+  /** Google Maps link (opens in browser). */
   mapUrl: string;
+  /** Maps Embed API URL for iframes only. */
+  embedUrl: string;
 };
 
 export type ShowMapInput = {
@@ -18,14 +22,16 @@ export async function buildShowMapPayload(
 ): Promise<MapToolPayload> {
   await assertMcpQuotaAvailable("show-map-at-coordinates");
   return {
-    mapUrl: buildEmbedViewUrl(input),
+    mapUrl: buildMapsViewUrl(input),
+    embedUrl: buildEmbedViewUrl(input),
   };
 }
 
 export async function buildShowMapToolResult(input: ShowMapInput) {
-  const { mapUrl } = await buildShowMapPayload(input);
+  const { mapUrl, embedUrl } = await buildShowMapPayload(input);
   const structuredContent = {
     mapUrl,
+    embedUrl,
     args: {
       latitude: input.latitude,
       longitude: input.longitude,

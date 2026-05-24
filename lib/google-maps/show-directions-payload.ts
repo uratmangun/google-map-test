@@ -2,11 +2,13 @@ import {
   buildEmbedDirectionsUrl,
   type EmbedTravelMode,
 } from "@/lib/google-maps/embed-map";
+import { buildMapsDirectionsUrl } from "@/lib/google-maps/maps-links";
 import { formatMapUrlToon } from "@/lib/google-maps/toon";
 import { assertMcpQuotaAvailable } from "@/lib/maps-quota-guard";
 
 export type DirectionsToolPayload = {
   mapUrl: string;
+  embedUrl: string;
 };
 
 export type ShowDirectionsInput = {
@@ -22,14 +24,16 @@ export async function buildShowDirectionsPayload(
 ): Promise<DirectionsToolPayload> {
   await assertMcpQuotaAvailable("show-directions");
   return {
-    mapUrl: buildEmbedDirectionsUrl(input),
+    mapUrl: buildMapsDirectionsUrl(input),
+    embedUrl: buildEmbedDirectionsUrl(input),
   };
 }
 
 export async function buildShowDirectionsToolResult(input: ShowDirectionsInput) {
-  const { mapUrl } = await buildShowDirectionsPayload(input);
+  const { mapUrl, embedUrl } = await buildShowDirectionsPayload(input);
   const structuredContent = {
     mapUrl,
+    embedUrl,
     args: {
       originLatitude: input.originLatitude,
       originLongitude: input.originLongitude,

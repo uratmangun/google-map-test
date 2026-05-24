@@ -19,11 +19,13 @@ function resolveMapUrl(output: unknown): string | null {
     asRecord(root.args) ??
     root;
 
-  if (typeof structured.mapUrl === "string" && structured.mapUrl.trim()) {
-    return structured.mapUrl;
-  }
   if (typeof structured.embedUrl === "string" && structured.embedUrl.trim()) {
     return structured.embedUrl;
+  }
+  const mapUrl =
+    typeof structured.mapUrl === "string" ? structured.mapUrl.trim() : "";
+  if (mapUrl && mapUrl.includes("/maps/embed/")) {
+    return mapUrl;
   }
   return null;
 }

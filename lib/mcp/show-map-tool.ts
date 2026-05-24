@@ -27,12 +27,13 @@ export const schema = {
 
 export const outputSchema = {
   mapUrl: z.string().url(),
+  embedUrl: z.string().url().optional(),
 };
 
 export const metadata: ToolMetadata = {
   name: "show-map-at-coordinates",
   description:
-    "Render an embedded Google Map for latitude/longitude. Returns mapUrl in TOON; MCP Apps hosts show an interactive iframe widget.",
+    "Render an embedded Google Map for latitude/longitude. Returns mapUrl (opens in Google Maps) in TOON; embedUrl powers the iframe widget.",
   annotations: {
     title: "Show map at coordinates",
     readOnlyHint: true,
