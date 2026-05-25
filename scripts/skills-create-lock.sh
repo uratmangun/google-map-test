@@ -11,7 +11,6 @@ TMP_LOCK="${LOCK}.tmp.$$"
 SUPPORTED_SOURCE_TYPES=(github gitlab git local well-known)
 
 declare -A KNOWN_SOURCES=(
-  [agent-browser]="vercel-labs/agent-browser"
   [cloudflare]="cloudflare/skills"
   [gh-cli]="github/awesome-copilot"
   [hono]="yusukebe/hono-skill"
@@ -22,7 +21,6 @@ declare -A KNOWN_SOURCES=(
 )
 
 declare -A KNOWN_SOURCE_TYPES=(
-  [agent-browser]="github"
   [cloudflare]="github"
   [gh-cli]="github"
   [hono]="github"
